@@ -6,7 +6,7 @@
  *   person(ctx, spec, x, y, h, pose, o)   a teammate                      -> { hand, head }
  *   chef(ctx, x, y, h, pose, o)           the chef (10.1)                 -> { handR, handL, head }
  *   chefHand(ctx, x, y, s, o)             his hand in the hoodie sleeve (shot 02)
- *   chefBeardEdge(ctx, x, y, w, o)        his beard edge from the top of the frame (shot 02)
+ *   chefBeardEdge(ctx, x, y, w, o)        his chin and short beard from the top of the frame (shot 02)
  *   waitress(ctx, x, y, h, pose, o)       the waitress with ten Maß       -> { fanL, fanR }
  *   tshirt(ctx, x, y, s, o)               a flying or held t-shirt (10.8)
  *   jerseyBack(ctx, x, y, w, o)           the FESB 9 back print alone
@@ -16,15 +16,32 @@
  * targets solved to hip / knee / ankle by two-bone IK) go through solve() to joints, and
  * drawFigure() dresses the joints. Named poses are keyframes mixed by k, so every pose of a
  * character runs through the same bones and the proportions never drift. Scenes pass
- * lib.onTwos(t) as pose.t / quantise k so characters move on twos; the chef's salsa steps on 8ths.
+ * lib.onTwos(t) as pose.t and quantise k so characters move on twos; the chef's salsa holds one
+ * pose per 8th (counts 1-3 and 5-7 step, 4 and 8 hold, hips sway away from the moving foot).
  *
- * Sides: L and R are SCREEN left and right of an unflipped figure (the chef's mug hand 'R' is his
- * screen-right hand, as storyboard G3 needs). o.flip mirrors the whole figure about x.
- * Line weights: o.line 'hero' | 'secondary' (default) | 'background' at 7 / 5 / 3 px for an 800 px
- * figure, scaled with h (min 1.5 px); detail lines 2.5 px likewise.
- * Faces, the jersey print, the chest logos and the tee lockup are cached per size bucket and
- * render scale in one lib.cached store (they are t-independent); outlines boil live.
- * Teammates are drawn at h * spec.tall (0.95 to 1.04) so a row of them is not a row of clones.
+ * Conventions
+ *   - L and R are SCREEN left and right of an unflipped figure (the chef's mug hand 'R' is his
+ *     screen-right hand, as storyboard G3 needs). o.flip mirrors the figure about x; prints and
+ *     the mug logo never mirror.
+ *   - Line weight: o.line 'hero' | 'secondary' (default) | 'background' = 7 / 5 / 3 px for an
+ *     800 px figure, scaled with h (min 1.5 px); detail lines 2.5 px likewise; props.LINE settings.
+ *   - Teammates are drawn at h * spec.tall (0.97 to 1.04) so a row of them is not a row of clones.
+ *   - Figure parts go through shapeFig(), the figures' twin of FILM.props.shape (same options and
+ *     look, an ink resample step that grows with the outline length); mugs, logos, the lockup,
+ *     sparkles and the t-shirts use FILM.props itself.
+ *   - Cached (t-independent, keyed by size bucket and render scale in one lib.cached store): faces
+ *     per expression and turn, the jersey print, chest logos; the OktoberFESB tee lockup per boil
+ *     drawing (props.lockup boils with lib.T and costs ~20 ms, so it is drawn at most once per
+ *     boil drawing and scaled to every tee).
+ *
+ * Options beyond docs/cast-api.md (all optional)
+ *   person: pose 'crouch' (front row of a team photo, hands on knees); pose.crouch or o.crouch
+ *     crouches any pose ('turn', 'back', 'pullOn', 'cheer'...); o.upper draws only the upper body
+ *     (a teammate behind a table); o.shirt 'jersey' | 'octo' for the shirt hugged in 'catch';
+ *     o.gleam 0..1 sweeps a gold gleam over the jersey back print; o.hands [L, R] hand shapes.
+ *   chef: expressions 'half' (calm half-smile at rest) and 'grin'; o.mug.h overrides the mug
+ *     height (default h * 200 / 860, storyboard G3); the mug grip comes from props.mug's handle.
+ *   TEAM specs also carry top, legs (the casual outfit) and tall.
  */
 (function () {
   'use strict';
@@ -406,7 +423,7 @@
   // ===========================================================================
 
   function chefBody() {
-    return { head: 15.4, headW: 13.8, neck: 2.0, neckR: 4.6, torso: 33.6, thigh: 22, shin: 22, ankleH: 3, hipJ: 6.2, shW: 12.8, chest: 14.6, waist: 14.4, hip: 13, upper: 15, fore: 13.6, hand: 6.8, armR: 4.3, foreR: 3.5, thighR: 6.3, shinR: 4.3, zStep: 2.2, headK: 'chef' };
+    return { head: 15.4, headW: 12.9, neck: 2.0, neckR: 4.6, torso: 33.6, thigh: 22, shin: 22, ankleH: 3, hipJ: 6.2, shW: 12.8, chest: 14.6, waist: 14.4, hip: 13, upper: 15, fore: 13.6, hand: 6.8, armR: 4.3, foreR: 3.5, thighR: 6.3, shinR: 4.3, zStep: 2.2, headK: 'chef' };
   }
   function waitressBody() {
     return { head: 15.4, headW: 14.6, neck: 2.4, neckR: 3.3, torso: 30.4, thigh: 22, shin: 22.2, ankleH: 2.8, hipJ: 6, shW: 11, chest: 12.2, waist: 10.8, hip: 14.6, upper: 14.6, fore: 13, hand: 6.2, armR: 3.9, foreR: 3.2, thighR: 5.6, shinR: 3.7, zStep: 2, headK: 'waitress' };
@@ -777,7 +794,7 @@
     if (F.forehead) {
       for (const k of [0, 1]) {
         const y = (F.eyeY - F.eyeRy - F.browLift - 0.1 - k * 0.055) * hh;
-        fInk(g, [[X(-0.15 + k * 0.03), y + hh * 0.01], [X(0), y - hh * 0.008], [X(0.15 - k * 0.03), y + hh * 0.01]], lw * 0.55, P.outlineSoft, seed + 3 + k);
+        fInk(g, [[X(-0.15 + k * 0.03), y + hh * 0.01], [X(0), y - hh * 0.008], [X(0.15 - k * 0.03), y + hh * 0.01]], lw * 0.55, F.chef ? L.rgba(P.outlineSoft, 0.5) : P.outlineSoft, seed + 3 + k);
       }
     }
     // eyes
@@ -798,7 +815,11 @@
       g.beginPath();
       g.ellipse(ex, ey, rx * 0.97, ry * 0.97, 0, 0, TAU);
       g.clip();
-      dotPx(g, px, py, pr, P.outline);
+      if (F.iris) {
+        dotPx(g, px, py, pr, P.outline);
+        dotPx(g, px, py, pr * 0.8, F.iris);
+        dotPx(g, px, py, pr * 0.45, P.outline);
+      } else dotPx(g, px, py, pr, P.outline);
       dotPx(g, px - pr * 0.36, py - pr * 0.4, pr * 0.34, P.gloss);
       dotPx(g, px + pr * 0.38, py + pr * 0.34, pr * 0.15, P.gloss);
       if (happy) {
@@ -826,9 +847,10 @@
       const by = ey - ry - F.browLift * hh;
       const bl = rx * 1.15;
       if (F.chef) {
-        const pts2 = [[ex - bl, by + ry * 0.35], [ex - bl * 0.3, by - ry * 0.35], [ex + bl * 0.55, by - ry * 0.38], [ex + bl * 1.05, by + ry * 0.05], [ex + bl * 0.5, by - ry * 0.02], [ex - bl * 0.3, by + ry * 0.05]];
-        const bp = e < 0 ? pts2 : pts2.map((q) => [2 * ex - q[0], q[1]]);
-        fInk(g, bp, lw * 0.8, P.outline, seed + 23 + e, true, F.brow);
+        const th = F.browW * hw;
+        const ox = ex + e * bl * 1.12, oy = by + ry * 0.42, ix = ex - e * bl * 0.95, iy = by + ry * 0.05;
+        const bp = [[ox, oy - th * 0.3], [ex, by - th * 0.62], [ix, iy - th * 0.55], [ix - e * th * 0.15, iy + th * 0.45], [ex, by + th * 0.38], [ox + e * th * 0.1, oy + th * 0.3]];
+        fInk(g, bp, lw * 0.7, P.outline, seed + 23 + e, true, F.brow);
       } else {
         fInk(g, [[ex - bl, by + ry * 0.2], [ex - bl * 0.2, by - ry * 0.22], [ex + bl, by - ry * 0.05]].map((q) => (e < 0 ? q : [2 * ex - q[0], q[1]])), F.browW * hw, F.brow, seed + 23 + e);
       }
@@ -837,15 +859,15 @@
     const nx = X(0), ny = ey + 0.2 * hh;
     const lookN = (F.look || 0) * hw * 0.05;
     if (F.chef) {
-      const pts = [[nx - hw * 0.1 + lookN, ny + hh * 0.02], [nx - hw * 0.07 + lookN, ny - hh * 0.07], [nx + lookN, ny - hh * 0.12], [nx + hw * 0.07 + lookN, ny - hh * 0.07], [nx + hw * 0.1 + lookN, ny + hh * 0.02], [nx + lookN, ny + hh * 0.07]];
-      fInk(g, pts, lw * 0.9, P.outline, seed + 31, true, F.skin);
-      g.save();
-      g.beginPath();
-      g.ellipse(nx + lookN + hw * 0.04, ny + hh * 0.02, hw * 0.07, hh * 0.05, 0, 0, TAU);
+      // a strong straight nose: the shade side of the bridge, a rounded tip, nostril wings
+      const q = (x, y) => [nx + lookN + x * hw, ny + y * hh];
       g.fillStyle = SHADE_SKIN;
+      g.beginPath();
+      crTrace(g, [q(0.015, -0.17), q(0.06, -0.02), q(0.085, 0.05), q(0.04, 0.075), q(0.03, -0.02)], true);
       g.fill();
-      g.restore();
-      dotPx(g, nx + lookN - hw * 0.035, ny - hh * 0.05, hw * 0.018, P.gloss);
+      fInk(g, [q(0.02, -0.17), q(0.05, -0.03), q(0.08, 0.04), q(0.05, 0.075), q(0.0, 0.08)], lw * 0.95, P.outline, seed + 31);
+      fInk(g, [q(-0.045, 0.035), q(-0.08, 0.055), q(-0.055, 0.08), q(-0.02, 0.078)], lw * 0.85, P.outline, seed + 32);
+      dotPx(g, q(-0.01, 0.01)[0], q(-0.01, 0.01)[1], hw * 0.016, P.gloss);
     } else {
       g.save();
       g.fillStyle = SHADE_SKIN;
@@ -858,7 +880,12 @@
     // mouth
     const mx = X(0) * 0.96, my = F.mouthY * hh;
     const mw = F.mouthW * hw * (0.55 + 0.45 * cos(phi));
-    if (expr === 'calm') {
+    if (expr === 'half') {
+      // a calm, confident half-smile: closed, the corner on the lit side lifts
+      fInk(g, [[mx - mw * 0.9, my + hh * 0.012], [mx - mw * 0.25, my + hh * 0.035], [mx + mw * 0.45, my + hh * 0.022], [mx + mw * 1.0, my - hh * 0.028]], lw * 1.1, P.outline, seed + 41);
+      fInk(g, [[mx + mw * 1.06, my - hh * 0.065], [mx + mw * 1.16, my - hh * 0.02]], lw * 0.6, P.outlineSoft, seed + 42);
+      fInk(g, [[mx - mw * 0.35, my + hh * 0.075], [mx + mw * 0.3, my + hh * 0.07]], lw * 0.55, P.outlineSoft, seed + 44);
+    } else if (expr === 'calm') {
       fInk(g, [[mx - mw, my - hh * 0.015], [mx, my + hh * 0.045], [mx + mw, my - hh * 0.015]], lw * 1.1, P.outline, seed + 41);
     } else if (expr === 'o') {
       const pts = fEll(mx, my + hh * 0.02, mw * 0.5, hh * 0.075, 16);
@@ -1251,8 +1278,11 @@
     // beard mass (live) before the features
     if (chef) {
       // a short, neatly trimmed beard along the jaw and chin (about 12 px at an 800 px figure)
-      R.shaded(HM(CHEF_BEARD, true), P.beard, 330, SHADE_DEEP, 0.14);
-      R.line(HM([[0.27, 0.49], [0.33, 0.455]], true), 331, { color: P.beardGrey, alpha: 0.9 });
+      R.shaded(HM(CHEF_BEARD, true), P.beard, 330, SHADE, 0.14);
+      const hl = P.beardLight || P.beard;
+      R.line(HM([[-0.36, 0.38], [-0.26, 0.47]], true), 331, { color: hl, width: R.dw * 1.3 });
+      R.line(HM([[-0.1, 0.56], [0.0, 0.6]], true), 332, { color: hl, width: R.dw * 1.3 });
+      R.line(HM([[-0.46, 0.16], [-0.44, 0.27]], true), 333, { color: hl, width: R.dw * 1.2 });
     } else if (st.spec && st.spec.beard === 'stubble') {
       R.fill(HM([[-0.49, 0.04], [-0.47, 0.28], [-0.34, 0.47], [-0.16, 0.55], [0, 0.57], [0.16, 0.55], [0.34, 0.47], [0.47, 0.28], [0.49, 0.04], [0.38, 0.2], [0.2, 0.2], [0.12, 0.33], [0, 0.35], [-0.12, 0.33], [-0.2, 0.2], [-0.38, 0.2]], true), L.rgba(hairOf(st.hairColor), 0.24));
     } else if (st.spec && st.spec.beard === 'short') {
@@ -1379,7 +1409,7 @@
   }
   function drawChefHeadBack(R, B, J, st, H, HM) {
     // beard sides peeking out at the jaw
-    for (const e of [-1, 1]) R.shaded(HM([[e * 0.47, 0.06], [e * 0.52, 0.22], [e * 0.46, 0.38], [e * 0.36, 0.47], [e * 0.4, 0.34], [e * 0.44, 0.2]]), P.beard, 380 + e, SHADE_DEEP, 0.2);
+    for (const e of [-1, 1]) R.shaded(HM([[e * 0.47, 0.06], [e * 0.52, 0.22], [e * 0.47, 0.4], [e * 0.34, 0.52], [e * 0.38, 0.36], [e * 0.44, 0.2]]), P.beard, 380 + e, SHADE, 0.2);
     if (st.bandana === 'on') {
       R.shape(HM(bandanaPts(false)), P.bandana, 383, { shade: { color: SHADE, side: 'right', frac: 0.12 } });
       for (const d of BANDANA_DOTS) R.dot(H(d[0] * 0.95, d[1] * 0.9 + 0.08), B.headW * 0.028, P.bandanaDot);
@@ -1772,7 +1802,7 @@
     const k = clamp(num(pose.k, 1));
     const t = Math.max(0, num(pose.t, 0));
     const pe = pelvisY(B);
-    const stand = { py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], aL: [0.2, 0.2, 0], aR: [0.2, 0.2, 0], hands: ['open', 'open'], expr: 'smile' };
+    const stand = { py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], aL: [0.2, 0.2, 0], aR: [0.2, 0.2, 0], hands: ['open', 'open'], expr: 'half' };
     const R0 = (q) => resolve(B, q);
     const g = mugGrip(mh, false, 0);
     const gu = [g[0] / (B._U || 1), g[1] / (B._U || 1)];
@@ -1789,7 +1819,7 @@
       }
       case 'tieBandana': {
         const hk = [
-          [0, R0(Object.assign({}, stand, { ikR: [11.5, pe + 2, 1, 0.2], hands: ['open', 'fist'], expr: 'smile' }))],
+          [0, R0(Object.assign({}, stand, { ikR: [11.5, pe + 2, 1, 0.2], hands: ['open', 'fist'], expr: 'half' }))],
           [0.25, R0({ py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], ikL: [-9, pe - 57, 1, 0.8], ikR: [9, pe - 57, 1, 0.8], hands: ['fist', 'fist'], head: 0, expr: 'grin' })],
           [0.5, R0({ py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], ikL: [-4.5, pe - 47.5, 1, -0.4], ikR: [4.5, pe - 47.5, 1, -0.4], hands: ['fist', 'fist'], head: 0.06, expr: 'smile' })],
           [0.75, R0({ py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], ikL: [-8, pe - 45, 1, -0.2], ikR: [3, pe - 49, 1, -0.6], hands: ['fist', 'fist'], head: -0.08, expr: 'grin', tails: 0.4 })],
@@ -1840,12 +1870,13 @@
   }
 
   const CHEF_BEARD = [
-    [-0.515, 0.02], [-0.51, 0.2], [-0.455, 0.36], [-0.315, 0.5], [-0.15, 0.575], [0, 0.595], [0.15, 0.575], [0.315, 0.5], [0.455, 0.36], [0.51, 0.2], [0.515, 0.02],
-    [0.435, 0.05], [0.43, 0.2], [0.375, 0.32], [0.27, 0.41], [0.21, 0.37], [0.175, 0.335], [0.13, 0.45], [0, 0.472], [-0.13, 0.45], [-0.175, 0.335], [-0.21, 0.37], [-0.27, 0.41], [-0.375, 0.32], [-0.43, 0.2], [-0.435, 0.05],
+    [-0.515, 0.04], [-0.51, 0.2], [-0.46, 0.36], [-0.34, 0.5], [-0.2, 0.6], [-0.08, 0.655], [0, 0.665], [0.08, 0.655], [0.2, 0.6], [0.34, 0.5], [0.46, 0.36], [0.51, 0.2], [0.515, 0.04],
+    [0.44, 0.1], [0.4, 0.24], [0.32, 0.33], [0.23, 0.37], [0.19, 0.345], [0.15, 0.43], [0.1, 0.475], [0, 0.49], [-0.1, 0.475], [-0.15, 0.43], [-0.19, 0.345], [-0.23, 0.37], [-0.32, 0.33], [-0.4, 0.24], [-0.44, 0.1],
   ];
   const CHEF_FACE = {
-    eyeY: 0.0, eyeX: 0.2, eyeRx: 0.085, eyeRy: 0.083, pupil: 0.056, lashes: false, brow: P.beard, browW: 0.07, browLift: 0.045,
-    mouthY: 0.36, mouthW: 0.16, skin: P.chefSkin, glasses: false, lines: true, blush: L.rgba(P.confettiD, 0.22), chef: true,
+    eyeY: 0.0, eyeX: 0.2, eyeRx: 0.084, eyeRy: 0.072, pupil: 0.054, lashes: false, brow: P.chefBrow || P.beard, browW: 0.075, browLift: 0.03,
+    iris: L.mix(P.woodMid, P.woodDeep, 0.35), forehead: true,
+    mouthY: 0.37, mouthW: 0.15, skin: P.chefSkin, glasses: false, lines: true, blush: L.rgba(P.confettiD, 0.18), chef: true,
     moustache: { color: P.beard, trim: true }, seed: 77,
   };
 
@@ -1974,10 +2005,11 @@
     ctx.save();
     if (alpha < 1) ctx.globalAlpha *= alpha;
     R.shaded([[-51, -170], [51, -170], ...arc(51, 72, -72, 16, false).slice(0, 17)], P.chefSkin, 1, SHADE_SKIN, 0.22);
-    const band = [...arc(51, 72, -72, 18, false), ...arc(44, 60, -72, 18, true)];
-    R.shaded(band, P.beard, 2, SHADE_DEEP, 0.14);
-    R.line([[-20, -13], [-14, -9]], 3, { color: P.beardGrey, width: R.dw * 1.2 });
-    R.line([[12, -8], [19, -12]], 4, { color: P.beardGrey, width: R.dw * 1.2 });
+    const band = [...arc(51, 72, -72, 18, false), ...arc(44, 56, -76, 18, true)];
+    R.shaded(band, P.beard, 2, SHADE, 0.14);
+    const hl = P.beardLight || P.beard;
+    R.line([[-26, -16], [-18, -9]], 3, { color: hl, width: R.dw * 1.4 });
+    R.line([[-6, -8], [4, -6]], 4, { color: hl, width: R.dw * 1.4 });
     R.gloss([-30, -40], [-22, -30], 1.4, 0.4);
     ctx.restore();
   }
@@ -2063,7 +2095,8 @@
       out['fan' + S] = [c[0], c[1]];
     }
     ctx.restore();
-    return { fanL: out.fanL, fanR: out.fanR };
+    // screen order: fanL is always the left one on screen
+    return flip ? { fanL: out.fanR, fanR: out.fanL } : { fanL: out.fanL, fanR: out.fanR };
   }
 
   // ===========================================================================
