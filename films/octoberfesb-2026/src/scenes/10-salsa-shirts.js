@@ -1,23 +1,211 @@
-// STUB
-// Placeholder for shot 10 'salsa-shirts' (illustrated). The scene agent replaces this whole file.
-FILM.scene({
-  id: 'salsa-shirts',
-  draw(ctx, t, info) {
-    const L = info.lib, P = L.pal;
-    const p = L.clamp(t / info.dur);
-    const q = L.clamp(L.onTwos(t) / info.dur);
-    const seed = L.hash('salsa-shirts');
-    L.paper(ctx);
-    const W = FILM.W, H = FILM.H, cx = W / 2;
-    // captions sit above the safe bottom the gate enforces: a vertical frame keeps clear of the
-    // Shorts UI, a square frame needs only a margin
-    const safeBottom = H >= W * 1.5 ? H - 380 : H - 80;
-    L.inkPath(ctx, L.ellipsePts(cx, H * 0.45, W * 0.28, H * 0.21, 72), { closed: true, width: 5, seed: seed + 1, double: true });
-    L.inkLine(ctx, W * 0.13, H * 0.68, W * 0.87, H * 0.68, { width: 3, seed: seed + 2 });
-    L.inkCircle(ctx, W * 0.22 + W * 0.56 * q, H * 0.64, 44, { width: 3, seed: seed + 3, fill: P.orange });
-    L.text(ctx, 'STUB 10', cx, H * 0.17, { size: 60, weight: 600, align: 'center', color: P.annMagenta });
-    L.text(ctx, info.shot.title || 'salsa-shirts', cx, safeBottom - 120, { size: 44, align: 'center', color: P.ink });
-    L.text(ctx, 'salsa-shirts', cx, safeBottom - 70, { size: 30, align: 'center', color: P.inkSoft });
-    if (p > 0.01) L.inkLine(ctx, W * 0.13, safeBottom - 20, W * 0.13 + W * 0.74 * p, safeBottom - 20, { width: 4, color: P.annBlue, seed: seed + 4, taper: 0 });
-  },
-});
+// Shot 10 'salsa-shirts' — illustrated, T 18.5-22.5 (global), shot-local t 0..4.0.
+// Handoff: 09 -> 10 is a hard cut; the chef's salsa step keeps counting from info.T - 17.5 so it
+// does not jump at the cut (09 drives the same pose from the same clock).
+//
+// Layers back to front:
+//   1. Hall background ('hall' variant), full brightness, panning 0.6x with the foreground (its own
+//      parallax, art bible 1.2's three depth layers) as the camera follows the chef.
+//   2. Bunting + bulb garland across the ceiling.
+//   3. The four waitresses at the very back, clapping along.
+//   4. Table A (far side of the aisle): 8 teammates seated on its aisle-facing bench.
+//   5. The crate stencilled with the FESB mark, at the chef's starting mark.
+//   6. The chef, dancing the salsa basic down the aisle (x 700 -> 1200) and throwing all fifteen
+//      t-shirts, one per 8th.
+//   7. The fifteen t-shirts: in flight (parabolic arc, dashed gold motion trail) or caught and
+//      hugged by their teammate.
+//   8. Table B (near side of the aisle): 7 teammates seated on its aisle-facing bench.
+// Camera: a slow pan following the chef (a plain horizontal translate; the background parallaxes
+// under its own camX so no gap opens at the edges).
+(function () {
+  'use strict';
+  const FILM = window.FILM;
+  const ID = 'salsa-shirts';
+  const lerp = (a, b, u) => a + (b - a) * u;
+  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+  const sd = (...k) => FILM.lib.hash(ID, ...k) & 0x7fffffff;
+
+  // --- staging -------------------------------------------------------------------------------
+  const CHEF_X0 = 700, CHEF_X1 = 1200, CHEF_Y = 700, CHEF_H = 620;
+  const TABLE_A_X = 960, TABLE_A_Y = 420, TABLE_A_W = 2000, TABLE_A_H = 300;
+  const TABLE_B_X = 960, TABLE_B_Y = 830, TABLE_B_W = 2060, TABLE_B_H = 430;
+  const CRATE_X = 640, CRATE_Y = 752, CRATE_W = 150;
+  // table() (props.js) seats a bench's front row at y + legs*0.42; legs defaults to 170. Both
+  // tables use that default explicitly so this stays true, and the seat y below never has to wait
+  // on table()'s own return value (table B is drawn after the chef, for depth order).
+  const LEGS = 170;
+  const SEAT_A_Y = TABLE_A_Y + LEGS * 0.42;
+  const SEAT_B_Y = TABLE_B_Y + LEGS * 0.42;
+
+  // --- timing (shot-local seconds; T = 18.5 + t) ----------------------------------------------
+  const THROW_STEP = 0.25;              // one 8th at 120 bpm
+  const N_THROWS = 15;
+  const THROW_WIN = 0.18;               // the 'throw' pose pulse, centred on the release instant
+  const CATCH_DUR = 0.3;                // arms-up -> hug, ending exactly on the catch beat
+  const FLIGHT = 0.5;                   // one beat of flight, throw -> catch
+  const APEX = 250;                     // px above the straight line, storyboard 10
+  const SPIN_START = 2.1, SPIN_END = 2.9; // T 20.6-21.4, bracketing the T 21.0 spin
+
+  function throwTime(i) { return i * THROW_STEP; }       // t of release
+  function catchTime(i) { return throwTime(i) + FLIGHT; } // t of catch
+
+  // --- seating (pure geometry: x order across both benches decides throw order) ----------------
+  let GEO = null;
+  function geo() {
+    if (GEO) return GEO;
+    const TEAM = FILM.cast.TEAM;
+    const seats = [];
+    for (let j = 0; j < 8; j++) seats.push({ x: lerp(240, 1720, j / 7), table: 'A' });
+    for (let j = 0; j < 7; j++) seats.push({ x: lerp(280, 1680, j / 6), table: 'B' });
+    seats.sort((a, b) => a.x - b.x);
+    seats.forEach((s, i) => {
+      s.throwI = i;
+      s.spec = TEAM[i];
+      s.design = i % 2 === 0 ? 'jersey' : 'octo';
+    });
+    return (GEO = { seats });
+  }
+
+  // --- a crate stencilled with the FESB mark (no dedicated prop exists; built from FILM.props
+  // primitives per scene-anatomy: "if a helper is missing, define it inside your own file") -------
+  function drawCrate(ctx, L, P, x, y, w, seed) {
+    const h = w * 0.6, lidBack = w * 0.16;
+    const top = y - h, fl = x - w / 2, fr = x + w / 2;
+    const b = L.boil(L.T);
+    FILM.props.shape(ctx, [[fl - lidBack * 0.3, top - lidBack], [fr - lidBack * 0.3, top - lidBack], [fr, top], [fl, top]], {
+      fill: P.woodLight, shade: { color: P.woodMid, side: 'right', frac: 0.3 }, width: 4, smooth: false, seed: seed + 1, boil: b,
+    });
+    FILM.props.shape(ctx, [[fl, top], [fr, top], [fr, y], [fl, y]], {
+      fill: P.woodMid, shade: { color: P.woodDeep, side: 'right', frac: 0.26 }, width: 5, smooth: false, seed: seed + 2, boil: b,
+    });
+    ctx.save();
+    ctx.strokeStyle = L.rgba(P.woodDeep, 0.55);
+    ctx.lineWidth = Math.max(1.5, w * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(fl + w * 0.08, top); ctx.lineTo(fl + w * 0.08, y);
+    ctx.moveTo(fr - w * 0.08, top); ctx.lineTo(fr - w * 0.08, y);
+    ctx.stroke();
+    ctx.restore();
+    FILM.props.fesbLogo(ctx, x, top + h * 0.44, w * 0.32, { outline: true });
+  }
+
+  // --- a dashed gold motion trail behind a flying shirt (storyboard 10: 2.5 px, 14 on 10 off,
+  // fading over 6 frames once it lands) --------------------------------------------------------
+  function drawTrail(ctx, L, P, x0, y0, x1, y1, apex, uEnd, alpha) {
+    if (alpha <= 0.01 || uEnd <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.strokeStyle = P.gold;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([14, 10]);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    const n = 18;
+    for (let i = 0; i <= n; i++) {
+      const u = (uEnd * i) / n;
+      const px = lerp(x0, x1, u), py = lerp(y0, y1, u) - apex * 4 * u * (1 - u);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  FILM.scene({
+    id: ID,
+    draw(ctx, tIn, info) {
+      const L = info.lib, P = L.pal;
+      const t = L.clamp(tIn, 0, info.dur);
+      const Tg = info.T;
+      const CAST = FILM.cast, PROPS = FILM.props;
+      const G = geo();
+
+      // --- the chef's world position and the camera's slow, damped follow --------------------
+      const travel = L.ease.inOutSine(t / info.dur);
+      const chefX = lerp(CHEF_X0, CHEF_X1, travel);
+      const panX = lerp(-90, 100, travel); // camera.x - 960; foreground pans by this, background by 0.6x
+
+      // 1. hall background, parallaxing under its own camX -------------------------------------
+      PROPS.hallBack(ctx, { variant: 'hall', camX: panX, dim: 0, t: Tg });
+
+      ctx.save();
+      ctx.translate(-panX, 0);
+
+      // 2. bunting + garland across the ceiling -------------------------------------------------
+      PROPS.bunting(ctx, -260, 130, 2180, 130, 48, { t: Tg, seed: sd('bunt') });
+      PROPS.garland(ctx, -240, 178, 2160, 178, 42, { t: Tg, glow: 1, seed: sd('gar') });
+
+      // 3. the four waitresses at the back, clapping --------------------------------------------
+      const WHO = ['liesl', 'resi', 'vroni', 'gretl'];
+      const WX = [520, 780, 1140, 1400];
+      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], 250, 250, { name: 'clap', t: Tg }, { who: WHO[i] });
+
+      // helper: pose for a seated teammate — idle until their catch window, then arms-up -> hug,
+      // holding the caught shirt for the rest of the shot.
+      function seatPose(s) {
+        const cEnd = catchTime(s.throwI), cStart = cEnd - CATCH_DUR;
+        if (t < cStart) return { pose: { name: 'sit' }, o: {} };
+        return { pose: { name: 'catch', k: clamp01((t - cStart) / CATCH_DUR) }, o: { shirt: s.design } };
+      }
+
+      // 4. table A (far side): 8 seats -----------------------------------------------------------
+      PROPS.table(ctx, TABLE_A_X, TABLE_A_Y, TABLE_A_W, { depth: 30, legs: LEGS, bench: 'front', seed: sd('tblA'), boil: L.boil(Tg) });
+      for (const s of G.seats) {
+        if (s.table !== 'A') continue;
+        const { pose, o } = seatPose(s);
+        CAST.person(ctx, s.spec, s.x, SEAT_A_Y, TABLE_A_H, pose, o);
+      }
+
+      // 5. the crate at the chef's starting mark --------------------------------------------------
+      drawCrate(ctx, L, P, CRATE_X, CRATE_Y, CRATE_W, sd('crate'));
+
+      // 6. the chef: continuous salsa, punctuated by a throw pulse on every 8th, with a spin
+      //    flourish woven in around T 21.0 --------------------------------------------------------
+      let chefPose = null;
+      for (let i = 0; i < N_THROWS; i++) {
+        const ti = throwTime(i);
+        if (Math.abs(t - ti) <= THROW_WIN / 2) {
+          chefPose = { name: 'throw', k: clamp01((t - (ti - THROW_WIN / 2)) / THROW_WIN) };
+          break;
+        }
+      }
+      if (!chefPose && t >= SPIN_START && t <= SPIN_END) {
+        chefPose = { name: 'spin', k: clamp01((t - SPIN_START) / (SPIN_END - SPIN_START)) };
+      }
+      if (!chefPose) chefPose = { name: 'salsa', t: Tg - 17.5 };
+      CAST.chef(ctx, chefX, CHEF_Y, CHEF_H, chefPose, { line: 'hero' });
+
+      // 7. the fifteen t-shirts: flight then catch -------------------------------------------------
+      for (const s of G.seats) {
+        const ti = throwTime(s.throwI), tc = catchTime(s.throwI);
+        if (t < ti || t > tc + 6 / 24) continue; // gone 6 frames after landing (trail fade window)
+        const u = clamp01((t - ti) / FLIGHT);
+        // release point: approximately the chef's throwing hand at the moment of release.
+        const x0 = lerp(CHEF_X0, CHEF_X1, L.ease.inOutSine(ti / info.dur)) + CHEF_H * 0.06;
+        const y0 = CHEF_Y - CHEF_H * 0.6;
+        const x1 = s.x;
+        const y1th = (s.table === 'A' ? SEAT_A_Y : SEAT_B_Y) - (s.table === 'A' ? TABLE_A_H : TABLE_B_H) * 0.55;
+        if (u < 1) {
+          const trailAlpha = 1;
+          drawTrail(ctx, L, P, x0, y0, x1, y1th, APEX, u, trailAlpha);
+          const px = lerp(x0, x1, u), py = lerp(y0, y1th, u) - APEX * 4 * u * (1 - u);
+          const rot = u * Math.PI * 4 + ((sd('rot', s.throwI) % 1000) / 1000) * Math.PI * 2;
+          const flap = (Tg * 6) % 1;
+          CAST.tshirt(ctx, px, py, 130, { design: s.design, rot, flap, view: (Math.floor(u * 8) % 2) ? 'back' : 'front' });
+        } else {
+          const fadeAlpha = clamp01(1 - (t - tc) / (6 / 24));
+          if (fadeAlpha > 0.01) drawTrail(ctx, L, P, x0, y0, x1, y1th, APEX, 1, fadeAlpha);
+        }
+      }
+
+      // 8. table B (near side): 7 seats, drawn last so it reads as the closest row -----------------
+      PROPS.table(ctx, TABLE_B_X, TABLE_B_Y, TABLE_B_W, { depth: 34, legs: LEGS, bench: 'front', seed: sd('tblB'), boil: L.boil(Tg) });
+      for (const s of G.seats) {
+        if (s.table !== 'B') continue;
+        const { pose, o } = seatPose(s);
+        CAST.person(ctx, s.spec, s.x, SEAT_B_Y, TABLE_B_H, pose, o);
+      }
+
+      ctx.restore();
+    },
+  });
+})();
