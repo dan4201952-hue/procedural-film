@@ -179,11 +179,11 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 ### 10.1 The chef (the company head)
 
 - Bald, round head with a strong white gleam on the upper left (a 40 px soft stroke plus a star sparkle that pings on the downbeats in 09).
-- Full dark beard (beard, a few beardGrey strands), trimmed round, covering jaw and chin, joined to a moustache; thick dark eyebrows; warm, confident smile with teeth; friendly eyes.
+- A neat, small, short beard: a closely trimmed dark beard (beard, a few beardGrey strands) that follows the jaw and chin line, only 10 to 15 px thick at 800 px figure height, joined to a short trimmed moustache; tidy, never bushy or full. Thick dark eyebrows; warm, confident smile with teeth; friendly eyes.
 - Sturdy build, head about 1/6.5 of his height, broad shoulders.
 - Party outfit: white shirt with rolled sleeves, lederhosen suspenders with a cross strap, lederhosen shorts, knee socks, brown shoes.
 - The red bandana (bandana with bandanaDot dots) is tied over the head with the knot and two short tails at the back of the head; the tails flutter on turns.
-- Office (shot 02): only his hand in a dark navy hoodie sleeve and the lower edge of the beard entering from the top of the frame. The face is never shown before 09.
+- Office (shot 02): only his hand in a dark navy hoodie sleeve and the edge of his chin with the short trimmed beard entering from the top of the frame. The face is never shown before 09.
 - Salsa: the basic step is forward-back on counts 1-2-3 and 5-6-7, holding on 4 and 8, with hip sway opposite the stepping foot, elbows bent at 90 degrees, and a right-hand spin that takes one beat. Poses change on every 8th.
 - Portray him with affection: charismatic host, never a clown.
 
@@ -198,7 +198,7 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 
 - Fifteen teammates (the real team is 15 people plus the chef), all white men (skinA and skinB only).
 - Ages vary: nine look 30 to 40, four look in their twenties, and two look older (45 to 55, greying hair, a few forehead lines). There are always more younger men than older ones.
-- Vary them by hair (short, buzz cut, side part, curly, quiff, long-ish tied back, receding for an older one; hairBlonde, hairBrown, hairBlack, hairRed, grey for the older ones), facial hair (clean-shaven, stubble, short beard, moustache; about a third with some beard, kept short or light so the chef's full dark beard stays unique), glasses on three or four, and build (slim, average, stocky).
+- Vary them by hair (short, buzz cut, side part, curly, quiff, long-ish tied back, receding for an older one; hairBlonde, hairBrown, hairBlack, hairRed, grey for the older ones), facial hair (clean-shaven, stubble, short beard, moustache; about a quarter with stubble or a short beard; nobody else is bald, so the chef's bald head, short dark beard and red bandana stay unique), glasses on three or four, and build (slim, average, stocky).
 - Nobody is bald except the chef.
 - Before the t-shirts: casual shirts and sweaters in muted colours (grey, olive, mustard, maroon, denim).
 - After the t-shirts: every teammate in the fesbBlue jersey tee (10.8).
@@ -260,7 +260,7 @@ On a unit square (0..1, origin top-left):
 - A beer stein with a lid or a pint glass: the mug is the glass Maß with a D handle.
 - `OctoberFESB` with a c: the brand is `OktoberFESB`.
 - The FESB logo with four rounded corners or an E instead of an F: two opposite rounded corners and a white F.
-- The chef with hair or with a grey beard: he is bald with a dark beard and a red bandana.
+- The chef with hair, a grey beard or a big bushy beard: he is bald with a neat, short, trimmed dark beard and a red bandana.
 - Showing the chef's face in 01 to 08: he is a silhouette hand and beard edge in 02 and appears only in 09.
 - The waitress carrying a tray: she carries the mugs by their handles, five per hand.
 - Text below y 970 or beyond x 1760: captions stay in the safe area.
