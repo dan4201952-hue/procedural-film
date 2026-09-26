@@ -28,20 +28,25 @@
   const FANL = [1300, 600], FANR = [1660, 600];
   const TAP = [200, 1000], TABLE = [1760, 900];
 
-  // waitress silhouette (dirndl): head + braided crown, puffed sleeves, laced bodice, flared skirt
-  // with an apron and bow, shoes; arms reach straight out to the two mug fans (art bible 10.2).
+  // waitress silhouette (dirndl): head + braided crown on a neck, puffed sleeves, laced bodice, a
+  // flared skirt (waist -> hip -> hem) with an apron and bow, shoes; arms reach straight out to the
+  // two mug fans (art bible 10.2). The neck keeps the head visually joined to the shoulders.
   const CX = 1480;
-  const HEAD_R = 56, HEAD_CY = 244;
-  const SHOULDER_Y = 344, WAIST_Y = 520, HEM_Y = 900, FOOT_Y = 1000;
-  const BODICE = [[CX - 68, SHOULDER_Y], [CX - 60, WAIST_Y], [CX + 60, WAIST_Y], [CX + 68, SHOULDER_Y]];
-  const SKIRT = [[CX - 62, WAIST_Y], [CX - 234, HEM_Y], [CX + 234, HEM_Y], [CX + 62, WAIST_Y]];
-  const APRON = [[CX - 52, WAIST_Y + 4], [CX - 86, 758], [CX + 86, 758], [CX + 52, WAIST_Y + 4]];
-  const SLEEVE_L = [CX - 92, SHOULDER_Y + 14], SLEEVE_R = [CX + 92, SHOULDER_Y + 14];
-  const SLEEVE_RAD = 34;
+  const HEAD_R = 50, HEAD_CY = 234;
+  const NECK_TOP = 284, SHOULDER_Y = 312, WAIST_Y = 500, HIP_Y = 680, HEM_Y = 900, FOOT_Y = 1000;
+  const NECK = [[CX - 17, NECK_TOP], [CX - 24, SHOULDER_Y], [CX + 24, SHOULDER_Y], [CX + 17, NECK_TOP]];
+  const BODICE = [[CX - 74, SHOULDER_Y], [CX - 58, WAIST_Y], [CX + 58, WAIST_Y], [CX + 74, SHOULDER_Y]];
+  const SKIRT = [
+    [CX - 58, WAIST_Y], [CX - 84, HIP_Y], [CX - 195, HEM_Y],
+    [CX + 195, HEM_Y], [CX + 84, HIP_Y], [CX + 58, WAIST_Y],
+  ];
+  const APRON = [[CX - 44, WAIST_Y + 4], [CX - 74, 730], [CX + 74, 730], [CX + 44, WAIST_Y + 4]];
+  const SLEEVE_L = [CX - 74, SHOULDER_Y + 8], SLEEVE_R = [CX + 74, SHOULDER_Y + 8];
+  const SLEEVE_RAD = 24;
   // her hands reach straight out to the two mug fans
   const HAND_L = FANL, HAND_R = FANR;
-  const SHOE_L = [CX - 34, FOOT_Y], SHOE_R = [CX + 30, FOOT_Y];
-  const BOW_AT = [CX + 66, WAIST_Y + 6]; // her left, the viewer's right (art bible 10.2)
+  const SHOE_L = [CX - 32, FOOT_Y], SHOE_R = [CX + 30, FOOT_Y];
+  const BOW_AT = [CX + 58, WAIST_Y + 6]; // her left, the viewer's right (art bible 10.2)
 
   /** A braided band across the top of the head, with short cross-ticks suggesting the braid. */
   function braidCrown(ctx, cx, cy, r) {

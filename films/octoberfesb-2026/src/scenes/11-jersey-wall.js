@@ -83,7 +83,7 @@
           const refH = crouch ? FRONT_REF_H : REF_H;
           const gleam = t >= HOLD_START ? gleamK(i) : 0;
           const pose = { name: 'turn', k: turnK(s.col), crouch };
-          if (squash < 1) {
+          if (bounceK < 1) {
             ctx.save();
             ctx.translate(s.x, s.y);
             ctx.scale(1, squash);
