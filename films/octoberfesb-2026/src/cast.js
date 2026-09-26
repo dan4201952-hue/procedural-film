@@ -191,7 +191,7 @@
       L.inkPath(ctx, pts, {
         closed: true, width: o.width || 5, color: o.color || P.outline, alpha: o.lineAlpha, seed: o.seed || 1, draw, boil: o.boil, smooth,
         wobble: LN.wobble, tremble: LN.tremble, rough: LN.rough, boilAmp: LN.boilAmp, widthJitter: LN.widthJitter, taper: LN.taper,
-        step: clamp(per / 40, 4, 6), swell: 0.08, minWidth: 0.3, rough: 0, tremble: 0,
+        step: clamp(per / 40, 4, 6), swell: 0.08, minWidth: 0.3,
       });
     }
   }
