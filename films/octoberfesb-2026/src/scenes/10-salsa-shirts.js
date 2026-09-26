@@ -32,10 +32,11 @@
   const TABLE_A_X = 960, TABLE_A_Y = 560, TABLE_A_W = 2000, TABLE_A_LEGS = 140, TABLE_A_H = 260;
   const TABLE_B_X = 960, TABLE_B_Y = 860, TABLE_B_W = 2060, TABLE_B_LEGS = 180, TABLE_B_H = 380;
   const CRATE_X = 660, CRATE_Y = 760, CRATE_W = 130;
-  // table() (props.js) seats a bench's front row at y + legs*0.42. Precomputed so the seat y below
-  // never has to wait on table()'s own return value (table B is drawn after the chef, for depth order).
-  const SEAT_A_Y = TABLE_A_Y + TABLE_A_LEGS * 0.42;
-  const SEAT_B_Y = TABLE_B_Y + TABLE_B_LEGS * 0.42;
+  // Both benches are drawn with o.upper (person's documented idiom for "people behind a table": cheap,
+  // no legs to solve or draw), so teammates stand at the table's own floor line (y + legs), letting
+  // ordinary standing proportions put their torso at the tabletop.
+  const FLOOR_A = TABLE_A_Y + TABLE_A_LEGS;
+  const FLOOR_B = TABLE_B_Y + TABLE_B_LEGS;
 
   // --- timing (shot-local seconds; T = 18.5 + t) ----------------------------------------------
   const THROW_STEP = 0.25;              // one 8th at 120 bpm
@@ -90,6 +91,60 @@
     FILM.props.fesbLogo(ctx, x, top + h * 0.44, w * 0.46, { outline: true });
   }
 
+  // --- a cached sprite for a clapping waitress: the clap cycle (0.5 s) is quantised on twos (per
+  // scene-anatomy: characters animate on twos anyway), so there are only 6 distinct poses per cycle
+  // to paint — every other frame is then a single drawImage instead of a full figure redraw. --------
+  function clapSprite(ctx, L, CAST, who, x, y, h, Tg) {
+    const S = FILM.S || 1;
+    const phase = Math.round(L.onTwos(Tg % 0.5) * 12) % 6; // 6 steps/cycle at 12 fps
+    const bw = h * 1.6, bh = h * 1.15;
+    const key = ['salsa-shirts-clap', who, phase, Math.round(h * 10), S].join('|');
+    const c = L.cached(key, () => {
+      const cv = FILM.makeCanvas(Math.max(1, Math.round(bw * S)), Math.max(1, Math.round(bh * S)));
+      const g = cv.getContext('2d');
+      g.scale(S, S);
+      CAST.waitress(g, bw / 2, bh, h, { name: 'clap', t: phase / 12 }, { who, carry: 'none' });
+      return cv;
+    });
+    ctx.drawImage(c, x - bw / 2, y - bh, bw, bh);
+  }
+
+  // --- a cached sprite for an idling teammate (o.upper, 'stand' — a pure function of spec.id, so
+  // it paints once per (spec, h, render scale) and every later idle frame is a single drawImage;
+  // this is what keeps the busiest frame in the film inside budget). Only the few teammates mid-catch
+  // at any moment fall back to a live FILM.cast.person draw. -----------------------------------------
+  function idleSprite(ctx, L, CAST, spec, x, y, h) {
+    const S = FILM.S || 1;
+    const bw = h * 1.3, bh = h * 1.12;
+    const key = ['salsa-shirts-idle', spec.id, Math.round(h * 10), S].join('|');
+    const c = L.cached(key, () => {
+      const cv = FILM.makeCanvas(Math.max(1, Math.round(bw * S)), Math.max(1, Math.round(bh * S)));
+      const g = cv.getContext('2d');
+      g.scale(S, S);
+      CAST.person(g, spec, bw / 2, bh, h, { name: 'stand' }, { upper: true });
+      return cv;
+    });
+    ctx.drawImage(c, x - bw / 2, y - bh, bw, bh);
+  }
+
+  // --- a cached world-space layer: paints `make(g, boil)` into an offscreen canvas spanning world
+  // x [x0,x1) once per (name, boil-phase, render scale), then every later frame is one drawImage.
+  // Boil (12 fps) still cycles the ink wobble through its 3 phases; nothing else here is t-varying,
+  // so this is the same trick hallBack already uses for its own background. -----------------------
+  function cachedLayer(ctx, L, name, x0, x1, Tg, make) {
+    const S = FILM.S || 1, HH = FILM.H, WW = x1 - x0;
+    const b = ((L.boil(Tg) % 3) + 3) % 3;
+    const c = L.cached(['salsa-shirts', name, b, S].join('|'), () => {
+      const cv = FILM.makeCanvas(Math.max(1, Math.round(WW * S)), Math.max(1, Math.round(HH * S)));
+      const g = cv.getContext('2d');
+      g.scale(S, S);
+      g.translate(-x0, 0);
+      make(g, b);
+      return cv;
+    });
+    ctx.drawImage(c, x0, 0, WW, HH);
+  }
+
   // --- a dashed gold motion trail behind a flying shirt (storyboard 10: 2.5 px, 14 on 10 off,
   // fading over 6 frames once it lands) --------------------------------------------------------
   function drawTrail(ctx, L, P, x0, y0, x1, y1, apex, uEnd, alpha) {
@@ -131,30 +186,35 @@
       ctx.save();
       ctx.translate(-panX, 0);
 
-      // 2. bunting + garland across the ceiling -------------------------------------------------
-      PROPS.bunting(ctx, -260, 130, 2180, 130, 48, { t: Tg, seed: sd('bunt') });
-      PROPS.garland(ctx, -240, 178, 2160, 178, 42, { t: Tg, glow: 1, seed: sd('gar') });
+      // 2. bunting + garland across the ceiling, plus table A's structure (cached: see cachedLayer) --
+      cachedLayer(ctx, L, 'back', -300, 2220, Tg, (g, b) => {
+        PROPS.bunting(g, -260, 130, 2180, 130, 48, { seed: sd('bunt'), boil: b });
+        PROPS.garland(g, -240, 178, 2160, 178, 42, { glow: 1, seed: sd('gar'), boil: b });
+        PROPS.table(g, TABLE_A_X, TABLE_A_Y, TABLE_A_W, { depth: 24, legs: TABLE_A_LEGS, bench: 'front', seed: sd('tblA'), boil: b });
+      });
 
-      // 3. the four waitresses at the back, clapping --------------------------------------------
+      // 3. the four waitresses at the back, clapping (cached: see clapSprite) --------------------
       const WHO = ['liesl', 'resi', 'vroni', 'gretl'];
       const WX = [460, 760, 1180, 1470];
-      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], 430, 165, { name: 'clap', t: Tg }, { who: WHO[i], carry: 'none' });
+      for (let i = 0; i < 4; i++) clapSprite(ctx, L, CAST, WHO[i], WX[i], 430, 165, Tg);
 
-      // helper: pose for a seated teammate — idle on the bench until their catch window (arms-up ->
-      // hug, standing briefly to catch it, per FILM.cast.person's 'catch' pose), then back down onto
-      // the bench for the rest of the shot.
-      function seatPose(s) {
+      // helper: draws a seated teammate — the cached idle sprite behind the table (o.upper, both
+      // benches: cheap, and the documented idiom for "people behind a table") until their catch
+      // window brings their arms up into a live-drawn hug, then back to the cached sprite.
+      function drawSeat(s, floorY, h) {
         const cEnd = catchTime(s.throwI), cStart = cEnd - CATCH_DUR, cSettled = cEnd + CATCH_SETTLE;
-        if (t < cStart || t >= cSettled) return { pose: { name: 'sit' }, o: {} };
-        return { pose: { name: 'catch', k: clamp01((t - cStart) / CATCH_DUR) }, o: { shirt: s.design } };
+        if (t < cStart || t >= cSettled) {
+          idleSprite(ctx, L, CAST, s.spec, s.x, floorY, h);
+        } else {
+          const k = clamp01((t - cStart) / CATCH_DUR);
+          CAST.person(ctx, s.spec, s.x, floorY, h, { name: 'catch', k }, { upper: true, shirt: s.design });
+        }
       }
 
-      // 4. table A (far side): 8 seats -----------------------------------------------------------
-      PROPS.table(ctx, TABLE_A_X, TABLE_A_Y, TABLE_A_W, { depth: 24, legs: TABLE_A_LEGS, bench: 'front', seed: sd('tblA'), boil: L.boil(Tg) });
+      // 4. table A's 8 seats (its wooden structure was already painted into the cached back layer) --
       for (const s of G.seats) {
         if (s.table !== 'A') continue;
-        const { pose, o } = seatPose(s);
-        CAST.person(ctx, s.spec, s.x, SEAT_A_Y, TABLE_A_H, pose, o);
+        drawSeat(s, FLOOR_A, TABLE_A_H);
       }
 
       // 5. the crate at the chef's starting mark --------------------------------------------------
@@ -185,7 +245,7 @@
         const x0 = lerp(CHEF_X0, CHEF_X1, L.ease.inOutSine(ti / info.dur)) + CHEF_H * 0.06;
         const y0 = CHEF_Y - CHEF_H * 0.6;
         const x1 = s.x;
-        const y1th = (s.table === 'A' ? SEAT_A_Y : SEAT_B_Y) - (s.table === 'A' ? TABLE_A_H : TABLE_B_H) * 0.55;
+        const y1th = (s.table === 'A' ? FLOOR_A - TABLE_A_H * 0.6 : FLOOR_B - TABLE_B_H * 0.6);
         if (u < 1) {
           const trailAlpha = 1;
           drawTrail(ctx, L, P, x0, y0, x1, y1th, APEX, u, trailAlpha);
@@ -199,12 +259,13 @@
         }
       }
 
-      // 8. table B (near side): 7 seats, drawn last so it reads as the closest row -----------------
-      PROPS.table(ctx, TABLE_B_X, TABLE_B_Y, TABLE_B_W, { depth: 34, legs: TABLE_B_LEGS, bench: 'front', seed: sd('tblB'), boil: L.boil(Tg) });
+      // 8. table B's structure, then its 7 seats — drawn last so it reads as the closest row --------
+      cachedLayer(ctx, L, 'front', TABLE_B_X - TABLE_B_W / 2 - 40, TABLE_B_X + TABLE_B_W / 2 + 40, Tg, (g, b) => {
+        PROPS.table(g, TABLE_B_X, TABLE_B_Y, TABLE_B_W, { depth: 34, legs: TABLE_B_LEGS, bench: 'front', seed: sd('tblB'), boil: b });
+      });
       for (const s of G.seats) {
         if (s.table !== 'B') continue;
-        const { pose, o } = seatPose(s);
-        CAST.person(ctx, s.spec, s.x, SEAT_B_Y, TABLE_B_H, pose, o);
+        drawSeat(s, FLOOR_B, TABLE_B_H);
       }
 
       ctx.restore();

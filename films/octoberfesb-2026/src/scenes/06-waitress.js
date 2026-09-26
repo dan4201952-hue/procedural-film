@@ -110,11 +110,11 @@
         g.translate(-DECO_X0, 0);
         for (let i = 0; i < G.segs.length; i++) {
           const [x0, x1] = G.segs[i];
-          PR.bunting(g, x0, 176, x1, 176, 42, { t: 0, seed: sd('bunt', i), line: 'background' });
+          PR.bunting(g, x0, 176, x1, 176, 42, { t: 0, boil: 0, seed: sd('bunt', i), line: 'background' });
         }
         for (let i = 0; i < G.segs.length; i++) {
           const [x0, x1] = G.segs[i];
-          PR.garland(g, x0, 236, x1, 236, 60, { t: 0, seed: sd('garl', i), glow: 1 });
+          PR.garland(g, x0, 236, x1, 236, 60, { t: 0, boil: 0, seed: sd('garl', i), glow: 1 });
         }
         return c;
       });
@@ -142,20 +142,21 @@
         g.scale(info.S, info.S);
         g.translate(-TAB_X0, -TAB_Y0);
         for (const tb of G.tables) {
-          const table = PR.table(g, tb.wx, tb.y, tb.w, { bench: 'back', line: 'secondary', seed: tb.mugSeed });
-          PR.mug(g, tb.wx + tb.w * 0.2, table.top, 92, { fill: 0.85, foam: 1.05, bubbles: true, t: 0, line: 'background', seed: tb.mugSeed });
+          const table = PR.table(g, tb.wx, tb.y, tb.w, { bench: 'back', line: 'secondary', seed: tb.mugSeed, boil: 0 });
+          PR.mug(g, tb.wx + tb.w * 0.2, table.top, 92, { fill: 0.85, foam: 1.05, bubbles: true, t: 0, boil: 0, line: 'background', seed: tb.mugSeed });
         }
         return c;
       });
       ctx.drawImage(tablesImg, 0, 0, tablesImg.width, tablesImg.height, TAB_X0 - shift, TAB_Y0, TAB_W, TAB_H);
 
-      // teammates ride the same pan as their table but are drawn fresh (their look tracks Liesl)
+      // teammates ride the same pan as their table but are drawn fresh; look tracks Liesl, quantized
+      // to the 0.1 steps the engine already caches heads at (art bible 7: characters move on twos)
       const MATE_H = 600;
       for (const tb of G.tables) {
         const sx = bgX(tb.wx);
         for (const m of tb.mates) {
           const mx = sx + m.dx;
-          const look = clamp((lieslX - mx) / 260, -1, 1);
+          const look = Math.round(clamp((lieslX - mx) / 260, -1, 1) * 10) / 10;
           CAST.person(ctx, m.spec, mx, 1000, MATE_H, { name: 'stand', look }, { upper: true, outfit: 'casual', line: 'secondary' });
         }
       }
@@ -196,8 +197,8 @@
         const g = c.getContext('2d');
         g.scale(info.S, info.S);
         g.translate(0, -(1080 - FG_H));
-        const fg = PR.table(g, -160, 1015, 900, { bench: 'none', line: 'hero', depth: 46, seed: sd('fgtable') });
-        PR.pretzel(g, 130, fg.top - 4, 220, { rot: -0.08, line: 'hero', seed: sd('fgpretzel') });
+        const fg = PR.table(g, -160, 1015, 900, { bench: 'none', line: 'hero', depth: 46, seed: sd('fgtable'), boil: 0 });
+        PR.pretzel(g, 130, fg.top - 4, 220, { rot: -0.08, line: 'hero', seed: sd('fgpretzel'), boil: 0 });
         return c;
       });
       ctx.drawImage(fgImg, 0, 0, fgImg.width, fgImg.height, 0, 1080 - FG_H, FG_W, FG_H);
