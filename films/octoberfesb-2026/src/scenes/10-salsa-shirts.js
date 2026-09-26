@@ -31,6 +31,7 @@
   const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
   const sd = (...k) => FILM.lib.hash(ID, ...k) & 0x7fffffff;
+  const FR = 1 / 24;
 
   // --- staging -------------------------------------------------------------------------------
   // The chef is the large foreground hero (director's note): feet near the bottom of the frame,
@@ -57,6 +58,9 @@
   const CATCH_SETTLE = 0.35;            // how long the hug is held before sitting back down
   const FLIGHT = 0.5;                   // one beat of flight, throw -> catch
   const APEX = 250;                     // px above the straight line, storyboard 10
+  const HEAD_CLEAR = 120;               // the arc's peak clears at least this far above the bandana
+  const EARLY_FRAMES = 4;               // draw the just-released shirt behind the chef for this long
+  const EARLY_WIN = (EARLY_FRAMES * FR) / FLIGHT;
   const SPIN_START = 2.1, SPIN_END = 2.9; // T 20.6-21.4, bracketing the T 21.0 spin
 
   function throwTime(i) { return i * THROW_STEP; }       // t of release
@@ -128,9 +132,15 @@
     ctx.drawImage(c, x0, 0, WW, HH);
   }
 
+  // A quadratic-bezier arc through (x0,y0) -> control (apexY at u=0.5) -> (x1,y1): lets a throw pin
+  // its peak to an explicit screen y (so it can be forced above the chef's head) rather than only
+  // ever bulging a fixed amount above the straight line.
+  const arcX = (x0, x1, u) => lerp(x0, x1, u);
+  const arcY = (y0, apexY, y1, u) => (1 - u) * (1 - u) * y0 + 2 * u * (1 - u) * apexY + u * u * y1;
+
   // --- a dashed gold motion trail behind a flying shirt (storyboard 10: 2.5 px, 14 on 10 off,
   // fading over 6 frames once it lands) --------------------------------------------------------
-  function drawTrail(ctx, L, P, x0, y0, x1, y1, apex, uEnd, alpha) {
+  function drawTrail(ctx, P, x0, y0, x1, y1, apexY, uEnd, alpha) {
     if (alpha <= 0.01 || uEnd <= 0.01) return;
     ctx.save();
     ctx.globalAlpha *= alpha;
@@ -142,11 +152,25 @@
     const n = 18;
     for (let i = 0; i <= n; i++) {
       const u = (uEnd * i) / n;
-      const px = lerp(x0, x1, u), py = lerp(y0, y1, u) - apex * 4 * u * (1 - u);
+      const px = arcX(x0, x1, u), py = arcY(y0, apexY, y1, u);
       if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
     ctx.stroke();
     ctx.restore();
+  }
+
+  // --- the chef's actual right-hand anchor during a throw's release keyframe (pose 'throw', k 0.5),
+  // as an offset from his own (x, y) base. The offset is a pure function of the pose and CHEF_H (no
+  // ambient time involved), so it is computed once — via a throwaway canvas, since chef() has no
+  // "anchors only" mode — and reused for every throw, on top of that throw's own world position.
+  // This is what keeps every t-shirt leaving his hand instead of his chest or face. ------------------
+  let HAND = null;
+  function handAnchor(CAST) {
+    if (HAND) return HAND;
+    const cv = FILM.makeCanvas(4, 4);
+    const r = CAST.chef(cv.getContext('2d'), 0, 0, CHEF_H, { name: 'throw', k: 0.5 }, { line: 'hero' });
+    HAND = { dx: r.handR[0], dy: r.handR[1], headTopDy: r.head[1] - CHEF_H * 0.1 };
+    return HAND;
   }
 
   FILM.scene({

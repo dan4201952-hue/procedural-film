@@ -74,8 +74,8 @@
   /** A small schematic bow-knot glyph. */
   function drawBow(ctx, x, y, s) {
     ctx.save();
-    ctx.strokeStyle = L.rgba(P.paleBlue, 0.75);
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = L.rgba(P.lineWhite, 0.9);
+    ctx.lineWidth = 2.4;
     ctx.lineJoin = 'round';
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -112,16 +112,35 @@
     ctx.restore();
   }
 
-  /** A closed polygon as a primary double outline (art bible section 5): lineWhite outer, paleBlue inner. */
+  /**
+   * A closed polygon as a primary double outline (art bible section 5): lineWhite outer, paleBlue
+   * inner, the inner line inset `gap` px inward along each edge's own normal (not a uniform centroid
+   * scale, which distorts an elongated or waisted silhouette).
+   */
   function primaryPoly(ctx, pts, gap) {
     gap = gap == null ? 10 : gap;
+    const n = pts.length;
     let cx = 0, cy = 0;
     for (const [x, y] of pts) { cx += x; cy += y; }
-    cx /= pts.length; cy /= pts.length;
-    let R = 0;
-    for (const [x, y] of pts) R += Math.hypot(x - cx, y - cy);
-    R /= pts.length;
-    const scale = Math.max(0.4, (R - gap) / R);
+    cx /= n; cy /= n;
+    const inward = (ax, ay, bx, by, nx, ny) => {
+      const midx = (ax + bx) / 2, midy = (ay + by) / 2;
+      return (cx - midx) * nx + (cy - midy) * ny < 0 ? [-nx, -ny] : [nx, ny];
+    };
+    const inner = pts.map((p, i) => {
+      const prev = pts[(i - 1 + n) % n], next = pts[(i + 1) % n];
+      const e1x = p[0] - prev[0], e1y = p[1] - prev[1];
+      const e2x = next[0] - p[0], e2y = next[1] - p[1];
+      const l1 = Math.hypot(e1x, e1y) || 1, l2 = Math.hypot(e2x, e2y) || 1;
+      let [n1x, n1y] = inward(prev[0], prev[1], p[0], p[1], -e1y / l1, e1x / l1);
+      let [n2x, n2y] = inward(p[0], p[1], next[0], next[1], -e2y / l2, e2x / l2);
+      let nx = n1x + n2x, ny = n1y + n2y;
+      const nl = Math.hypot(nx, ny) || 1;
+      nx /= nl; ny /= nl;
+      const cosA = n1x * n2x + n1y * n2y;
+      const miter = Math.min(2.2, 1 / Math.max(0.45, Math.sqrt((1 + cosA) / 2)));
+      return [p[0] + nx * gap * miter, p[1] + ny * gap * miter];
+    });
     ctx.save();
     ctx.lineJoin = 'round';
     ctx.strokeStyle = L.rgba(P.lineWhite, 0.85);
@@ -133,10 +152,7 @@
     ctx.strokeStyle = L.rgba(P.paleBlue, 0.5);
     ctx.lineWidth = 2;
     ctx.beginPath();
-    pts.forEach(([x, y], i) => {
-      const px = cx + (x - cx) * scale, py = cy + (y - cy) * scale;
-      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-    });
+    inner.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
     ctx.closePath();
     ctx.stroke();
     ctx.restore();
@@ -292,8 +308,16 @@
 
       // 3: the waitress — a recognisable dirndl silhouette at G2 — + her ten mugs as message boxes
       primaryPoly(ctx, SKIRT, 10);
-      secLine(ctx, APRON, { closed: true, width: 2 });
-      drawBow(ctx, BOW_AT[0], BOW_AT[1], 20);
+      // the apron: a filled panel so it reads as a distinct layer, not just another outline
+      ctx.save();
+      ctx.fillStyle = L.rgba(P.lineWhite, 0.1);
+      ctx.beginPath();
+      APRON.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      secLine(ctx, APRON, { closed: true, width: 2.2, color: P.lineWhite, alpha: 0.8 });
+      drawBow(ctx, BOW_AT[0], BOW_AT[1] + 26, 26);
       primaryPoly(ctx, BODICE, 8);
       secLine(ctx, [[CX - 2, SHOULDER_Y + 20], [CX - 2, WAIST_Y - 10]], { width: 1.6 });
       for (let i = 0; i < 4; i++) {
