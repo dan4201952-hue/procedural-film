@@ -32,67 +32,43 @@
 
   const clamp = LIB.clamp, lerp = LIB.lerp, smoothstep = LIB.smoothstep, E = LIB.ease;
 
-  // A fading copy of 12's foam "9" (art bible: stroke 70 px of foam with gold bubbles), just enough
-  // to hold the shape through the cut while it fades: not 12's stroke-by-stroke build, which 12 owns.
-  function foamNine(ctx, P, cx, cy, h, alpha) {
+  // A fading copy of 12's foam "9", matched exactly (screen space and stroke styling) to 12's own
+  // redraw: not 12's stroke-by-stroke build, which 12 owns, just its final shape and look, fading out.
+  //   Loop: closed ellipse cx=620 cy=380 rx=145 ry=170, traced CCW from the top (620, 220).
+  //   Tail: cubic bezier P0=(765,380) C1=(770,530) C2=(700,750) P1=(595,830).
+  //   Strokes, widest (bottom) to narrowest (top): dark outline (P.outline, +12, low alpha), a thin
+  //   goldDeep edge (+6), the uniform 70 px foam body, a lighter gloss core (x0.36).
+  function foamNine(ctx, P, alpha) {
     if (alpha <= 0.003) return;
-    const w = h * 0.66;
     const sw = 70;
-    const bowlR = h * 0.235;
-    const bowlCx = cx + w * 0.03;
-    const bowlCy = cy - h * 0.235;
-    const a0 = -0.35, a1 = TAU - 0.95;
-    const tailStart = [bowlCx + bowlR * Math.cos(a1), bowlCy + bowlR * Math.sin(a1)];
-    const c1 = [tailStart[0] + h * 0.03, tailStart[1] + h * 0.22];
-    const tailEnd = [cx - w * 0.07, cy + h * 0.46];
-    const c2 = [tailEnd[0] + h * 0.16, tailEnd[1] - h * 0.2];
-    const path = new Path2D();
-    path.arc(bowlCx, bowlCy, bowlR, a0, a1, false);
-    path.bezierCurveTo(c1[0], c1[1], c2[0], c2[1], tailEnd[0], tailEnd[1]);
+    const cx = 620, cy = 380, rx = 145, ry = 170;
+    const p0 = [765, 380], c1 = [770, 530], c2 = [700, 750], p1 = [595, 830];
+    const loop = new Path2D();
+    loop.ellipse(cx, cy, rx, ry, 0, 0, TAU, true); // CCW
+    const tail = new Path2D();
+    tail.moveTo(p0[0], p0[1]);
+    tail.bezierCurveTo(c1[0], c1[1], c2[0], c2[1], p1[0], p1[1]);
     ctx.save();
-    ctx.globalAlpha *= alpha;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = P.outline;
-    ctx.lineWidth = sw + 8;
-    ctx.stroke(path);
-    const grad = ctx.createLinearGradient(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
+    const pass = (color, width, a) => {
+      ctx.globalAlpha = alpha * a;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke(loop);
+      ctx.stroke(tail);
+    };
+    pass(P.outline, sw + 12, 0.35);
+    pass(P.goldDeep, sw + 6, 1);
+    ctx.globalAlpha = alpha;
+    const grad = ctx.createLinearGradient(cx - rx, cy - ry, cx * 0.9, p1[1]);
     grad.addColorStop(0, P.foam);
     grad.addColorStop(1, P.foamShade);
     ctx.strokeStyle = grad;
     ctx.lineWidth = sw;
-    ctx.stroke(path);
-    ctx.strokeStyle = LIB.rgba(P.gloss, 0.45);
-    ctx.lineWidth = sw * 0.3;
-    ctx.stroke(path);
-    // a few gold bubbles along the stroke for texture (art bible 4)
-    const bez = (t) => {
-      const mt = 1 - t;
-      const a = mt * mt * mt, b = 3 * mt * mt * t, cc = 3 * mt * t * t, d = t * t * t;
-      return [a * tailStart[0] + b * c1[0] + cc * c2[0] + d * tailEnd[0], a * tailStart[1] + b * c1[1] + cc * c2[1] + d * tailEnd[1]];
-    };
-    const pts = [];
-    for (let i = 0; i < 4; i++) {
-      const a = a0 + (a1 - a0) * (0.15 + 0.7 * (i / 3));
-      pts.push([bowlCx + Math.cos(a) * bowlR, bowlCy + Math.sin(a) * bowlR]);
-    }
-    for (let i = 1; i <= 3; i++) pts.push(bez(i / 4));
-    for (let i = 0; i < pts.length; i++) {
-      const r = LIB.rng(sd('nineBub', i));
-      const rad = h * (0.014 + 0.012 * r());
-      const [px, py] = pts[i];
-      ctx.beginPath();
-      ctx.arc(px, py, rad, 0, TAU);
-      ctx.fillStyle = LIB.rgba(P.gold, 0.92);
-      ctx.fill();
-      ctx.strokeStyle = P.goldDeep;
-      ctx.lineWidth = Math.max(1, rad * 0.18);
-      ctx.stroke();
-      ctx.fillStyle = P.gloss;
-      ctx.beginPath();
-      ctx.arc(px - rad * 0.3, py - rad * 0.3, Math.max(0.6, rad * 0.28), 0, TAU);
-      ctx.fill();
-    }
+    ctx.stroke(loop);
+    ctx.stroke(tail);
+    pass(P.gloss, sw * 0.36, 0.5);
     ctx.restore();
   }
 
@@ -131,7 +107,7 @@
         { count: 22, speed: lerp(55, 130, e), size: [6, lerp(16, 34, e)], alpha: 1 });
 
       // 3. the fading foam 9 handed off from 12 (G3), screen-fixed
-      foamNine(ctx, P, 620, 520, 620, 1 - smoothstep(0, HOLD, t));
+      foamNine(ctx, P, 1 - smoothstep(0, HOLD, t));
 
       // 4. the hero mug, screen-fixed: grows from G3 to G4 exactly on the last frame
       FILM.props.mug(ctx, mugX, mugY, mugH, {

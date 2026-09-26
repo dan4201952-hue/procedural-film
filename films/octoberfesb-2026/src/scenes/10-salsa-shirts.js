@@ -227,9 +227,38 @@
       // 5. the crate at the chef's starting mark, at his feet in the foreground ----------------------
       drawCrate(ctx, L, P, CRATE_X, CRATE_Y, CRATE_W, sd('crate'));
 
-      // 6. the chef (hero): continuous salsa, punctuated by a throw pulse on every 8th, with a spin
-      //    flourish woven in around T 21.0. Drawn after every table and teammate, so nothing ever
-      //    overlaps him. -------------------------------------------------------------------------
+      // helper: every throw's geometry — released from the chef's actual hand (handAnchor), the arc's
+      // peak pinned at least HEAD_CLEAR above his bandana so it never crosses his head or torso.
+      const H = handAnchor(CAST);
+      const headTopY = CHEF_Y + H.headTopDy;
+      function shirtGeom(s) {
+        const ti = throwTime(s.throwI), tc = catchTime(s.throwI);
+        if (t < ti || t > tc + 6 / 24) return null; // gone 6 frames after landing (trail fade window)
+        const chefXi = lerp(CHEF_X0, CHEF_X1, L.ease.inOutSine(ti / info.dur));
+        const x0 = chefXi + H.dx, y0 = CHEF_Y + H.dy;
+        const x1 = s.x, y1 = (s.table === 'A' ? FLOOR_A - TABLE_A_H * 0.62 : FLOOR_B - TABLE_B_H * 0.62);
+        const apexY = Math.min(lerp(y0, y1, 0.5) - APEX, headTopY - HEAD_CLEAR);
+        return { ti, tc, u: clamp01((t - ti) / FLIGHT), x0, y0, x1, y1, apexY, design: s.design, throwI: s.throwI };
+      }
+      function drawFlying(g, alpha) {
+        drawTrail(ctx, P, g.x0, g.y0, g.x1, g.y1, g.apexY, g.u, alpha);
+        const px = arcX(g.x0, g.x1, g.u), py = arcY(g.y0, g.apexY, g.y1, g.u);
+        const rot = g.u * Math.PI * 4 + ((sd('rot', g.throwI) % 1000) / 1000) * Math.PI * 2;
+        const flap = (Tg * 6) % 1;
+        CAST.tshirt(ctx, px, py, 170, { design: g.design, rot, flap, alpha, view: (Math.floor(g.u * 8) % 2) ? 'back' : 'front' });
+      }
+
+      // 6. the just-released shirt(s), for their first few frames only, drawn BEHIND the chef: right
+      //    at release they are still close to his silhouette, so this — not geometry alone — is what
+      //    guarantees nothing is ever seen lying across his face or chest. --------------------------
+      for (const s of G.seats) {
+        const g = shirtGeom(s);
+        if (g && g.u < 1 && g.u < EARLY_WIN) drawFlying(g, 1);
+      }
+
+      // 7. the chef (hero): continuous salsa, punctuated by a throw pulse on every 8th, with a spin
+      //    flourish woven in around T 21.0. Drawn after every table, teammate and the just-released
+      //    shirt, so nothing else overlaps him. ------------------------------------------------------
       let chefPose = null;
       for (let i = 0; i < N_THROWS; i++) {
         const ti = throwTime(i);
@@ -244,26 +273,16 @@
       if (!chefPose) chefPose = { name: 'salsa', t: Tg - 17.5 };
       CAST.chef(ctx, chefX, CHEF_Y, CHEF_H, chefPose, { line: 'hero' });
 
-      // 7. the fifteen t-shirts, on top of everything including the chef (they're leaving his hand
-      //    or landing on a catcher, so being frontmost here is correct): flight then catch ----------
+      // 8. every other t-shirt in flight (past its first few frames, now well clear of him and above
+      //    the tables), or fading after landing — drawn on top since they're clear of his silhouette --
       for (const s of G.seats) {
-        const ti = throwTime(s.throwI), tc = catchTime(s.throwI);
-        if (t < ti || t > tc + 6 / 24) continue; // gone 6 frames after landing (trail fade window)
-        const u = clamp01((t - ti) / FLIGHT);
-        // release point: approximately the chef's throwing hand at the moment of release.
-        const x0 = lerp(CHEF_X0, CHEF_X1, L.ease.inOutSine(ti / info.dur)) + CHEF_H * 0.06;
-        const y0 = CHEF_Y - CHEF_H * 0.62;
-        const x1 = s.x;
-        const y1th = (s.table === 'A' ? FLOOR_A - TABLE_A_H * 0.62 : FLOOR_B - TABLE_B_H * 0.62);
-        if (u < 1) {
-          drawTrail(ctx, L, P, x0, y0, x1, y1th, APEX, u, 1);
-          const px = lerp(x0, x1, u), py = lerp(y0, y1th, u) - APEX * 4 * u * (1 - u);
-          const rot = u * Math.PI * 4 + ((sd('rot', s.throwI) % 1000) / 1000) * Math.PI * 2;
-          const flap = (Tg * 6) % 1;
-          CAST.tshirt(ctx, px, py, 170, { design: s.design, rot, flap, view: (Math.floor(u * 8) % 2) ? 'back' : 'front' });
+        const g = shirtGeom(s);
+        if (!g) continue;
+        if (g.u < 1) {
+          if (g.u >= EARLY_WIN) drawFlying(g, 1);
         } else {
-          const fadeAlpha = clamp01(1 - (t - tc) / (6 / 24));
-          if (fadeAlpha > 0.01) drawTrail(ctx, L, P, x0, y0, x1, y1th, APEX, 1, fadeAlpha);
+          const fadeAlpha = clamp01(1 - (t - g.tc) / (6 / 24));
+          if (fadeAlpha > 0.01) drawTrail(ctx, P, g.x0, g.y0, g.x1, g.y1, g.apexY, 1, fadeAlpha);
         }
       }
 
