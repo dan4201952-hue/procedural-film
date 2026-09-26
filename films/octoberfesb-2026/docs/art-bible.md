@@ -180,6 +180,7 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 
 ### 10.1 The chef (the company head)
 
+- About 45 to 50 years old: a mature, energetic man, faint forehead lines and slight crow's feet when he smiles, no grey in the beard.
 - Light skin (chefSkin). Clean-shaven bald head, round with a strong white gleam on the upper left (a 40 px soft stroke plus a star sparkle that pings on the downbeats in 09).
 - A neat, short, trimmed beard as in the client's reference photo: warm brown with a ginger cast (beard, beardLight highlights), closely trimmed along the jaw, a little fuller on the chin, the cheek line clean and low, joined to a short moustache; tidy, never bushy. Eyebrows thick, straight-ish and darker than the beard (chefBrow). Brown eyes, a strong straight nose, faint forehead lines, a calm confident half-smile at rest and a warm grin with teeth when he performs.
 - Sturdy build, head about 1/6.5 of his height, broad shoulders.
