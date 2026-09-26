@@ -87,7 +87,7 @@
     ctx.moveTo(fr - w * 0.08, top); ctx.lineTo(fr - w * 0.08, y);
     ctx.stroke();
     ctx.restore();
-    FILM.props.fesbLogo(ctx, x, top + h * 0.44, w * 0.32, { outline: true });
+    FILM.props.fesbLogo(ctx, x, top + h * 0.44, w * 0.46, { outline: true });
   }
 
   // --- a dashed gold motion trail behind a flying shirt (storyboard 10: 2.5 px, 14 on 10 off,
@@ -137,8 +137,8 @@
 
       // 3. the four waitresses at the back, clapping --------------------------------------------
       const WHO = ['liesl', 'resi', 'vroni', 'gretl'];
-      const WX = [520, 780, 1140, 1400];
-      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], 500, 210, { name: 'clap', t: Tg }, { who: WHO[i] });
+      const WX = [460, 760, 1180, 1470];
+      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], 430, 165, { name: 'clap', t: Tg }, { who: WHO[i], carry: 'none' });
 
       // helper: pose for a seated teammate — idle on the bench until their catch window (arms-up ->
       // hug, standing briefly to catch it, per FILM.cast.person's 'catch' pose), then back down onto
