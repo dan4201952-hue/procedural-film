@@ -47,9 +47,14 @@ FILM.scene({
     // shot 02 pieces: the hand in the hoodie sleeve pressing, the beard edge
     ctx.fillStyle = P.officeNight;
     ctx.fillRect(1500, 560, 420, 520);
-    C.chefBeardEdge(ctx, 1710, 690, 300, {});
-    C.chefHand(ctx, 1620, 960, 0.6, { press: 0 });
-    C.chefHand(ctx, 1810, 960, 0.6, { press: 1 });
+    C.chefHand(ctx, 1640, 990, 0.5, { press: 0 });
+    C.chefHand(ctx, 1810, 990, 0.5, { press: 1 });
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(1500, 560, 420, 520);
+    ctx.clip();
+    C.chefBeardEdge(ctx, 1710, 700, 380, {});
+    ctx.restore();
     label('hand, beard', 1640, 600);
     // a close-up of the face (the same drawing at 1500 px)
     ctx.save();

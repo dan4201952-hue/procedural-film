@@ -83,7 +83,9 @@
   const SHIRTS = { grey: COL.grey, olive: COL.olive, mustard: COL.mustard, maroon: COL.maroon, denim: COL.denim };
   const LEGS = { jeans: COL.jeans, chinos: COL.chinos, dark: COL.dark };
   const skinOf = (k) => P[k] || P.skinA;
-  const hairOf = (k) => P[k] || P.hairBrown;
+  const HAIR_X = { grey: L.mix(P.beardGrey, P.bavWhite, 0.25), greying: L.mix(P.hairBrown, P.beardGrey, 0.6) };
+  const hairOf = (k) => HAIR_X[k] || P[k] || P.hairBrown;
+  const browOf = (k) => (k === 'hairBlonde' ? L.mix(P.wheatDeep, P.hairBrown, 0.55) : k === 'grey' || k === 'greying' ? L.mix(P.beardGrey, P.outline, 0.35) : L.mix(hairOf(k), P.outline, 0.25));
 
   /** uniform Catmull-Rom through the points as cubic Beziers (matches the ink line closely) */
   function crTrace(ctx, pts, closed) {
@@ -410,14 +412,11 @@
     return { head: 15.4, headW: 14.6, neck: 2.4, neckR: 3.3, torso: 30.4, thigh: 22, shin: 22.2, ankleH: 2.8, hipJ: 6, shW: 11, chest: 12.2, waist: 10.8, hip: 14.6, upper: 14.6, fore: 13, hand: 6.2, armR: 3.9, foreR: 3.2, thighR: 5.6, shinR: 3.7, zStep: 2, headK: 'waitress' };
   }
   function teamBody(spec) {
-    const B = { head: 17, headW: 14.3, neck: 2.8, neckR: 3.2, torso: 29.6, thigh: 22.6, shin: 22.6, ankleH: 2.8, hipJ: 5, shW: 10.4, chest: 10.9, waist: 9.6, hip: 9.9, upper: 15, fore: 13.4, hand: 6.4, armR: 3.2, foreR: 2.7, thighR: 4.7, shinR: 3.5, zStep: 2, headK: 'team' };
-    if (spec.gender === 'f') {
-      B.shW *= 0.9; B.chest *= 0.94; B.waist *= 0.9; B.hip *= 1.1; B.headW *= 0.97; B.armR *= 0.9; B.foreR *= 0.9; B.neckR *= 0.9;
-    }
-    const m = { slim: 0.9, average: 1, sturdy: 1.1, round: 1.07 }[spec.build] || 1;
+    const B = { head: 17, headW: 13.5, neck: 2.8, neckR: 3.2, torso: 29.6, thigh: 22.6, shin: 22.6, ankleH: 2.8, hipJ: 5, shW: 10.4, chest: 10.9, waist: 9.6, hip: 9.9, upper: 15, fore: 13.4, hand: 6.4, armR: 3.2, foreR: 2.7, thighR: 4.7, shinR: 3.5, zStep: 2, headK: 'team' };
+    const m = { slim: 0.9, average: 1, stocky: 1.12 }[spec.build] || 1;
     for (const k of ['shW', 'chest', 'waist', 'hip', 'armR', 'foreR', 'thighR', 'shinR', 'neckR']) B[k] *= m;
-    if (spec.build === 'round') { B.waist *= 1.24; B.hip *= 1.08; B.chest *= 1.05; }
-    if (spec.build === 'sturdy') B.waist *= 1.06;
+    if (spec.build === 'stocky') (B.waist *= 1.1), (B.headW *= 1.03);
+    if (spec.build === 'slim') B.headW *= 0.97;
     return B;
   }
   const pelvisY = (B) => -(B.thigh + B.shin) * 0.985 - B.ankleH;
@@ -666,6 +665,10 @@
     side: [[-0.5, 0.0], [-0.57, -0.25], [-0.46, -0.52], [-0.2, -0.67], [0.16, -0.67], [0.46, -0.53], [0.57, -0.28], [0.51, 0.0], [0.46, -0.1], [0.42, -0.2], [0.2, -0.2], [-0.12, -0.25], [-0.38, -0.27], [-0.46, -0.14]],
     long: [[-0.52, 0.5], [-0.59, 0.1], [-0.57, -0.26], [-0.45, -0.5], [-0.2, -0.64], [0.2, -0.64], [0.45, -0.5], [0.57, -0.26], [0.59, 0.1], [0.52, 0.5], [0.42, 0.46], [0.41, 0.05], [0.35, -0.2], [0.14, -0.32], [0.02, -0.33], [-0.14, -0.32], [-0.35, -0.2], [-0.41, 0.05], [-0.42, 0.46]],
     bob: [[-0.56, 0.36], [-0.61, 0.0], [-0.56, -0.35], [-0.35, -0.58], [0, -0.64], [0.35, -0.58], [0.56, -0.35], [0.61, 0.0], [0.56, 0.36], [0.44, 0.34], [0.43, 0.0], [0.41, -0.13], [0.2, -0.11], [-0.2, -0.11], [-0.41, -0.13], [-0.43, 0.0], [-0.44, 0.34]],
+    buzz: [[-0.5, -0.02], [-0.53, -0.24], [-0.46, -0.46], [-0.26, -0.58], [0, -0.6], [0.26, -0.58], [0.46, -0.46], [0.53, -0.24], [0.5, -0.02], [0.45, -0.2], [0.3, -0.3], [0, -0.32], [-0.3, -0.3], [-0.45, -0.2]],
+    quiff: [[-0.5, 0.02], [-0.56, -0.22], [-0.5, -0.46], [-0.32, -0.62], [-0.08, -0.74], [0.18, -0.82], [0.4, -0.74], [0.54, -0.5], [0.56, -0.22], [0.5, 0.02], [0.45, -0.14], [0.4, -0.28], [0.22, -0.36], [0.02, -0.34], [-0.2, -0.32], [-0.38, -0.26], [-0.45, -0.12]],
+    tied: [[-0.5, 0.0], [-0.55, -0.24], [-0.47, -0.47], [-0.26, -0.6], [0, -0.63], [0.26, -0.6], [0.47, -0.47], [0.55, -0.24], [0.5, 0.0], [0.44, -0.16], [0.34, -0.3], [0.16, -0.36], [0, -0.35], [-0.16, -0.36], [-0.34, -0.3], [-0.44, -0.16]],
+    receding: [[-0.5, 0.05], [-0.55, -0.2], [-0.49, -0.42], [-0.3, -0.57], [0, -0.6], [0.3, -0.57], [0.49, -0.42], [0.55, -0.2], [0.5, 0.05], [0.44, -0.04], [0.42, -0.27], [0.26, -0.43], [0.08, -0.44], [0, -0.48], [-0.08, -0.44], [-0.26, -0.43], [-0.42, -0.27], [-0.44, -0.04]],
     tight: [[-0.5, -0.02], [-0.55, -0.24], [-0.47, -0.47], [-0.26, -0.6], [0, -0.63], [0.26, -0.6], [0.47, -0.47], [0.55, -0.24], [0.5, -0.02], [0.44, -0.18], [0.3, -0.27], [0.1, -0.3], [-0.06, -0.24], [-0.1, -0.3], [-0.3, -0.28], [-0.44, -0.18]],
   };
   function bumpy(cx, cy, rx, ry, a0, a1, n, amp, freq) {
@@ -678,7 +681,7 @@
     return out;
   }
   function hairFrontPts(style) {
-    if (style === 'curls' || style === 'afro') {
+    if (style === 'curls' || style === 'curly' || style === 'afro') {
       const top = bumpy(0, -0.08, 0.56, 0.56, PI + 0.05, TAU - 0.05, 18, 0.07, 5.5);
       const line = bumpy(0, 0.02, 0.44, 0.3, -0.25, -PI + 0.25, 8, 0.12, 6).map((q) => [q[0], q[1] - 0.02]);
       return [[0.5, 0.0], ...line, [-0.5, 0.0], ...top];
@@ -693,6 +696,7 @@
       case 'afro': return bumpy(0, -0.14, 0.76, 0.66, 0, TAU - 0.01, 30, 0.06, 6.5);
       case 'ponytail': return [[0.3, -0.5], [0.56, -0.36], [0.68, -0.08], [0.7, 0.32], [0.62, 0.7], [0.5, 0.86], [0.46, 0.6], [0.5, 0.28], [0.46, -0.04], [0.36, -0.26]];
       case 'bun': return ell(0, -0.63, 0.2, 0.17, 16);
+      case 'tied': return ell(0.16, -0.6, 0.15, 0.13, 14);
       default: return null;
     }
   }
@@ -702,6 +706,7 @@
       case 'long': return [[-0.56, -0.3], [-0.62, 0.3], [-0.6, 1.14], [-0.3, 1.24], [0.3, 1.24], [0.6, 1.14], [0.62, 0.3], [0.56, -0.3], [0.38, -0.56], [0, -0.64], [-0.38, -0.56]];
       case 'bob': return [[-0.58, -0.3], [-0.62, 0.42], [-0.3, 0.5], [0.3, 0.5], [0.62, 0.42], [0.58, -0.3], [0.38, -0.57], [0, -0.64], [-0.38, -0.57]];
       case 'afro': return bumpy(0, -0.14, 0.76, 0.66, 0, TAU - 0.01, 30, 0.06, 6.5);
+      case 'curly':
       case 'curls': return [...bumpy(0, -0.05, 0.56, 0.58, PI - 0.4, TAU + 0.4, 20, 0.07, 5.5), [0.44, 0.34], [0.2, 0.4], [0, 0.36], [-0.2, 0.4], [-0.44, 0.34]];
       default: return [[-0.53, -0.1], [-0.52, 0.2], [-0.4, 0.32], [-0.2, 0.36], [0, 0.33], [0.2, 0.36], [0.4, 0.32], [0.52, 0.2], [0.53, -0.1], [0.46, -0.44], [0.26, -0.6], [0, -0.64], [-0.26, -0.6], [-0.46, -0.44]];
     }
@@ -767,6 +772,12 @@
         g.beginPath();
         g.ellipse(0.5 * sin(th) * hw, ey + 0.17 * hh, hw * 0.085 * (0.5 + 0.5 * cos(th)), hw * 0.055, 0, 0, TAU);
         g.fill();
+      }
+    }
+    if (F.forehead) {
+      for (const k of [0, 1]) {
+        const y = (F.eyeY - F.eyeRy - F.browLift - 0.1 - k * 0.055) * hh;
+        fInk(g, [[X(-0.15 + k * 0.03), y + hh * 0.01], [X(0), y - hh * 0.008], [X(0.15 - k * 0.03), y + hh * 0.01]], lw * 0.55, P.outlineSoft, seed + 3 + k);
       }
     }
     // eyes
@@ -886,7 +897,7 @@
     // moustache over the mouth
     if (F.moustache) {
       const c = F.moustache;
-      const s = c.big ? 1 : 0.8;
+      const s = c.big ? 1 : c.thin ? 0.62 : 0.8;
       const mt = ny + hh * 0.05;
       const pts = [[mx, mt], [mx + hw * 0.1 * s, mt - hh * 0.012], [mx + hw * 0.24 * s, mt + hh * 0.03], [mx + hw * 0.3 * s, mt + hh * 0.1 * s], [mx + hw * 0.2 * s, mt + hh * 0.075], [mx + hw * 0.08 * s, mt + hh * 0.07], [mx, mt + hh * 0.05], [mx - hw * 0.08 * s, mt + hh * 0.07], [mx - hw * 0.2 * s, mt + hh * 0.075], [mx - hw * 0.3 * s, mt + hh * 0.1 * s], [mx - hw * 0.24 * s, mt + hh * 0.03], [mx - hw * 0.1 * s, mt - hh * 0.012]];
       fInk(g, pts, lw * 0.9, P.outline, seed + 51, true, c.color);
@@ -945,9 +956,9 @@
     }
     // 2. legs, far leg first
     const order = J.zL > J.zR ? [1, -1] : [-1, 1];
-    if (!(st.sitBack)) for (const s of order) drawLeg(R, B, J, s, st);
+    if (!st.sitBack && !st.upper) for (const s of order) drawLeg(R, B, J, s, st);
     // 3. trousers top / skirt
-    if (st.kind === 'team' && !st.sitBack) {
+    if (st.kind === 'team' && !st.sitBack && !st.upper) {
       const pts = [[-B.hip * 0.97, 6], [-B.hip, 0], [-B.hip * 0.98, -5.2], [-B.hipJ * 0.45, -7.4], [0, -6.2], [B.hipJ * 0.45, -7.4], [B.hip * 0.98, -5.2], [B.hip, 0], [B.hip * 0.97, 6]];
       R.shaded(pts.map((q) => tf(q[0], q[1])), st.legColor, 30, SHADE, 0.16);
     }
@@ -1219,17 +1230,21 @@
     }
     if (st.waitress && !back) for (const e of [-1, 1]) { const q = H(e * 0.5, 0.2); R.dot(q, B.headW * 0.035, P.gold); }
     // skull
-    const jaw = chef ? 0.12 : st.kind === 'waitress' ? 0.16 : st.spec && st.spec.gender === 'f' ? 0.24 : 0.19;
-    R.shape(HM(headShape(jaw, chef ? 0.02 : 0.04)), skin, 310, { shade: { color: SHADE_SKIN, side: 'right', frac: 0.15 } });
+    const jaw = chef ? 0.12 : st.kind === 'waitress' ? 0.16 : st.spec && st.spec.build === 'stocky' ? 0.1 : st.spec && st.spec.build === 'slim' ? 0.17 : 0.13;
+    R.shape(HM(headShape(jaw, chef ? 0.02 : st.kind === 'team' ? 0.07 : 0.04)), skin, 310, { shade: { color: SHADE_SKIN, side: 'right', frac: 0.15 } });
     if (back) {
       if (chef) return drawChefHeadBack(R, B, J, st, H, HM);
       const hc = hairCoverPts(st.hair);
-      R.shaded(HM(hc), hairOf(st.hairColor), 320, SHADE, 0.16);
+      R.shaded(HM(hc), st.hair === 'buzz' ? L.mix(hairOf(st.hairColor), st.skin, 0.3) : hairOf(st.hairColor), 320, SHADE, 0.16);
       if (st.hair === 'ponytail') {
         R.shaded(HM([[-0.1, 0.0], [0.1, 0.0], [0.14, 0.5], [0.06, 0.95], [-0.04, 0.98], [-0.12, 0.5]]), hairOf(st.hairColor), 321, SHADE, 0.2);
         R.shape(HM([[-0.1, -0.02], [0.1, -0.02], [0.1, 0.06], [-0.1, 0.06]]), P.dirndlSkirt, 322, { width: R.ow * 0.5 });
       }
       if (st.hair === 'bun') R.shaded(HM(ell(0, -0.45, 0.2, 0.17, 16)), hairOf(st.hairColor), 323, SHADE, 0.2);
+      if (st.hair === 'tied') {
+        R.shaded(HM(ell(0, -0.3, 0.15, 0.13, 14)), hairOf(st.hairColor), 324, SHADE, 0.2);
+        R.shape(HM([[-0.1, -0.18], [0.1, -0.18], [0.1, -0.12], [-0.1, -0.12]]), P.outlineSoft, 325, { width: R.ow * 0.5 });
+      }
       if (st.kind === 'waitress') drawBraid(R, B, H, 0, true);
       return;
     }
@@ -1239,12 +1254,11 @@
       R.shaded(HM(beard, true), P.beard, 330, SHADE_DEEP, 0.16);
       R.line(HM([[0.22, 0.52], [0.3, 0.62]], true), 331, { color: P.beardGrey, alpha: 0.9 });
       R.line(HM([[-0.12, 0.6], [-0.06, 0.7]], true), 332, { color: P.beardGrey, alpha: 0.9 });
-    } else if (st.spec && st.spec.beard) {
-      const full = st.spec.beard === 'full';
-      const beard = full
-        ? [[-0.5, 0.04], [-0.5, 0.26], [-0.38, 0.5], [-0.18, 0.64], [0, 0.67], [0.18, 0.64], [0.38, 0.5], [0.5, 0.26], [0.5, 0.04], [0.4, 0.18], [0.24, 0.26], [0, 0.24], [-0.24, 0.26], [-0.4, 0.18]]
-        : [[-0.49, 0.1], [-0.46, 0.3], [-0.34, 0.47], [-0.16, 0.56], [0, 0.58], [0.16, 0.56], [0.34, 0.47], [0.46, 0.3], [0.49, 0.1], [0.4, 0.26], [0.2, 0.4], [0, 0.44], [-0.2, 0.4], [-0.4, 0.26]];
-      R.shaded(HM(beard, true), hairOf(st.hairColor), 330, SHADE, 0.16);
+    } else if (st.spec && st.spec.beard === 'stubble') {
+      R.fill(HM([[-0.49, 0.04], [-0.47, 0.28], [-0.34, 0.47], [-0.16, 0.55], [0, 0.57], [0.16, 0.55], [0.34, 0.47], [0.47, 0.28], [0.49, 0.04], [0.38, 0.2], [0.2, 0.2], [0.12, 0.33], [0, 0.35], [-0.12, 0.33], [-0.2, 0.2], [-0.38, 0.2]], true), L.rgba(hairOf(st.hairColor), 0.24));
+    } else if (st.spec && st.spec.beard === 'short') {
+      const beard = [[-0.48, 0.14], [-0.45, 0.32], [-0.34, 0.47], [-0.17, 0.55], [0, 0.57], [0.17, 0.55], [0.34, 0.47], [0.45, 0.32], [0.48, 0.14], [0.4, 0.27], [0.22, 0.37], [0.1, 0.39], [0, 0.41], [-0.1, 0.39], [-0.22, 0.37], [-0.4, 0.27]];
+      R.shaded(HM(beard, true), L.mix(hairOf(st.hairColor), skinOf(st.spec.skin), 0.3), 330, SHADE, 0.16, { width: R.ow * 0.8 });
     }
     // face (cached)
     faceBlit(R, J, B, wfh, st.faceKey + '|' + (st.face.expr || '') + '|' + Math.round((st.look || 0) * 10) + '|' + Math.round((p.nod || 0) * 4), Object.assign({}, st.face, { look: st.look, nod: p.nod }));
@@ -1274,7 +1288,7 @@
       R.shape(ell(ec[0], ec[1], B.headW * 0.085, B.head * 0.13, 12, J.headAng), st.skin, 342, { shade: { color: SHADE_SKIN, side: 'right', frac: 0.2 } });
       return;
     }
-    R.shaded(HM(hairFrontPts(st.hair), true), hc, 340, SHADE, 0.14);
+    R.shaded(HM(hairFrontPts(st.hair), true), st.hair === 'buzz' ? L.mix(hc, st.skin, 0.3) : hc, 340, SHADE, 0.14, st.hair === 'buzz' ? { width: R.ow * 0.75 } : undefined);
     const sheenA = H(warpX(-0.3, phi), -0.44), sheenB = H(warpX(-0.12, phi), -0.54);
     R.gloss(sheenA, sheenB, B.headW * 0.04, 0.35);
   }
@@ -1550,25 +1564,28 @@
   }
 
   // ===========================================================================
-  // TEAM (art bible 10.3): 15 people, mixed ages, genders, skin, hair; two beards; nobody bald
+  // TEAM (art bible 10.3): fifteen men (skinA / skinB): nine who look 30 to 40, four in their
+  // twenties, two older (45 to 55, greying, forehead lines). A third with light facial hair (stubble,
+  // a short beard, a moustache) so the chef's full dark beard stays unique; glasses on four; nobody
+  // bald but the chef. Extra fields beyond the contract: top, legs (the casual outfit) and tall.
   // ===========================================================================
 
   const TEAM = [
-    { id: 'ana', gender: 'f', skin: 'skinA', hair: 'ponytail', hairColor: 'hairBrown', glasses: false, beard: null, build: 'slim', shirt: 'denim', top: 'shirt', legs: 'chinos', age: 'young', tall: 0.97 },
-    { id: 'marko', gender: 'm', skin: 'skinB', hair: 'short', hairColor: 'hairBlack', glasses: false, beard: 'full', build: 'sturdy', shirt: 'olive', top: 'tee', legs: 'jeans', age: 'mid', tall: 1.03 },
-    { id: 'ivana', gender: 'f', skin: 'skinC', hair: 'curls', hairColor: 'hairBlack', glasses: true, beard: null, build: 'average', shirt: 'mustard', top: 'sweater', legs: 'jeans', age: 'mid', tall: 0.96 },
-    { id: 'luka', gender: 'm', skin: 'skinA', hair: 'side', hairColor: 'hairBlonde', glasses: true, beard: null, build: 'slim', shirt: 'grey', top: 'hoodie', legs: 'jeans', age: 'young', tall: 1.02 },
-    { id: 'sara', gender: 'f', skin: 'skinD', hair: 'bun', hairColor: 'hairBlack', glasses: false, beard: null, build: 'average', shirt: 'maroon', top: 'sweater', legs: 'dark', age: 'young', tall: 0.98 },
-    { id: 'tomo', gender: 'm', skin: 'skinB', hair: 'crop', hairColor: 'hairRed', glasses: false, beard: 'short', build: 'round', shirt: 'denim', top: 'shirt', legs: 'chinos', age: 'mid', tall: 1.0 },
-    { id: 'petra', gender: 'f', skin: 'skinA', hair: 'long', hairColor: 'hairRed', glasses: false, beard: null, build: 'slim', shirt: 'olive', top: 'tee', legs: 'jeans', age: 'young', tall: 0.97 },
-    { id: 'josip', gender: 'm', skin: 'skinC', hair: 'curls', hairColor: 'hairBrown', glasses: true, beard: null, build: 'average', shirt: 'maroon', top: 'tee', legs: 'dark', age: 'young', tall: 1.01 },
-    { id: 'maja', gender: 'f', skin: 'skinB', hair: 'bob', hairColor: 'hairBlonde', glasses: false, beard: null, build: 'round', shirt: 'grey', top: 'sweater', legs: 'jeans', age: 'mid', tall: 0.96 },
-    { id: 'ante', gender: 'm', skin: 'skinA', hair: 'side', hairColor: 'beardGrey', glasses: true, beard: null, build: 'sturdy', shirt: 'mustard', top: 'shirt', legs: 'chinos', age: 'older', tall: 1.0 },
-    { id: 'nika', gender: 'f', skin: 'skinD', hair: 'afro', hairColor: 'hairBlack', glasses: true, beard: null, build: 'average', shirt: 'denim', top: 'tee', legs: 'dark', age: 'young', tall: 0.98 },
-    { id: 'dario', gender: 'm', skin: 'skinC', hair: 'short', hairColor: 'hairBlack', glasses: false, beard: null, build: 'slim', shirt: 'grey', top: 'sweater', legs: 'jeans', age: 'young', tall: 1.04 },
-    { id: 'lea', gender: 'f', skin: 'skinB', hair: 'long', hairColor: 'hairBlack', glasses: false, beard: null, build: 'slim', shirt: 'mustard', top: 'shirt', legs: 'dark', age: 'young', tall: 0.95 },
-    { id: 'filip', gender: 'm', skin: 'skinD', hair: 'crop', hairColor: 'hairBlack', glasses: false, beard: null, build: 'average', shirt: 'olive', top: 'hoodie', legs: 'chinos', age: 'young', tall: 1.02 },
-    { id: 'vesna', gender: 'f', skin: 'skinA', hair: 'bob', hairColor: 'beardGrey', glasses: true, beard: null, build: 'average', shirt: 'maroon', top: 'shirt', legs: 'dark', age: 'older', tall: 0.96 },
+    { id: 'tm01', skin: 'skinA', age: 'mid', hair: 'short', hairColor: 'hairBrown', glasses: false, beard: 'stubble', build: 'average', shirt: 'denim', top: 'shirt', legs: 'chinos', tall: 1.0 },
+    { id: 'tm02', skin: 'skinB', age: 'young', hair: 'quiff', hairColor: 'hairBlack', glasses: false, beard: null, build: 'slim', shirt: 'olive', top: 'tee', legs: 'jeans', tall: 1.02 },
+    { id: 'tm03', skin: 'skinA', age: 'mid', hair: 'side', hairColor: 'hairBlonde', glasses: true, beard: null, build: 'average', shirt: 'grey', top: 'sweater', legs: 'jeans', tall: 0.98 },
+    { id: 'tm04', skin: 'skinA', age: 'mid', hair: 'curly', hairColor: 'hairRed', glasses: false, beard: 'short', build: 'stocky', shirt: 'mustard', top: 'hoodie', legs: 'dark', tall: 0.99 },
+    { id: 'tm05', skin: 'skinB', age: 'older', hair: 'receding', hairColor: 'grey', glasses: true, beard: 'moustache', build: 'stocky', shirt: 'maroon', top: 'shirt', legs: 'chinos', tall: 0.97 },
+    { id: 'tm06', skin: 'skinA', age: 'mid', hair: 'buzz', hairColor: 'hairBrown', glasses: false, beard: null, build: 'slim', shirt: 'olive', top: 'sweater', legs: 'jeans', tall: 1.03 },
+    { id: 'tm07', skin: 'skinB', age: 'mid', hair: 'tied', hairColor: 'hairBrown', glasses: false, beard: 'short', build: 'average', shirt: 'denim', top: 'tee', legs: 'dark', tall: 1.01 },
+    { id: 'tm08', skin: 'skinA', age: 'young', hair: 'curly', hairColor: 'hairBlonde', glasses: false, beard: null, build: 'slim', shirt: 'maroon', top: 'hoodie', legs: 'jeans', tall: 0.99 },
+    { id: 'tm09', skin: 'skinA', age: 'mid', hair: 'short', hairColor: 'hairBlack', glasses: true, beard: null, build: 'stocky', shirt: 'grey', top: 'shirt', legs: 'dark', tall: 1.0 },
+    { id: 'tm10', skin: 'skinB', age: 'older', hair: 'side', hairColor: 'greying', glasses: false, beard: 'stubble', build: 'average', shirt: 'mustard', top: 'sweater', legs: 'chinos', tall: 0.98 },
+    { id: 'tm11', skin: 'skinA', age: 'mid', hair: 'quiff', hairColor: 'hairBrown', glasses: false, beard: null, build: 'average', shirt: 'maroon', top: 'tee', legs: 'jeans', tall: 1.02 },
+    { id: 'tm12', skin: 'skinB', age: 'young', hair: 'buzz', hairColor: 'hairBlonde', glasses: false, beard: null, build: 'slim', shirt: 'denim', top: 'hoodie', legs: 'dark', tall: 1.04 },
+    { id: 'tm13', skin: 'skinA', age: 'mid', hair: 'side', hairColor: 'hairRed', glasses: false, beard: null, build: 'stocky', shirt: 'olive', top: 'shirt', legs: 'chinos', tall: 0.99 },
+    { id: 'tm14', skin: 'skinB', age: 'young', hair: 'short', hairColor: 'hairBlack', glasses: true, beard: null, build: 'slim', shirt: 'grey', top: 'tee', legs: 'jeans', tall: 1.01 },
+    { id: 'tm15', skin: 'skinA', age: 'mid', hair: 'side', hairColor: 'hairBlack', glasses: false, beard: null, build: 'average', shirt: 'denim', top: 'sweater', legs: 'dark', tall: 0.97 },
   ];
   TEAM.forEach((s) => Object.freeze(s));
   Object.freeze(TEAM);
@@ -1591,7 +1608,7 @@
     const t = num(pose.t, 0);
     const crouch = !!(pose.crouch || o.crouch || name === 'crouch');
     const idl = ((L.hash('idle', spec.id) % 7) - 3) * 0.018;
-    const stand = { py: 0.3, head: idl, aL: [0.15 + idl, 0.12, 0], aR: [0.15 - idl, 0.12, 0], expr: 'smile' };
+    const stand = { py: 0.3, head: idl, aL: [0.15 + idl, 0.12, 0], aR: [0.15 - idl, 0.12, 0], expr: L.hash('mouth', spec.id) % 5 < 2 ? 'calm' : 'smile' };
     const lower = crouch ? crouchLegs(B) : null;
     const withLegs = (q) => (lower ? Object.assign({}, q, { py: lower.py, fL: lower.fL, fR: lower.fR, foreL: lower.foreL, foreR: lower.foreR, torsoK: lower.torsoK }) : q);
     const armsDown = lower ? Object.assign({}, stand, lower) : stand;
@@ -1646,11 +1663,17 @@
   };
 
   function teamFace(spec, expr) {
-    const f = spec.gender === 'f';
+    const h = L.hash('face', spec.id);
+    const v = (i) => (((h >>> (i * 4)) & 15) / 15 - 0.5) * 2; // -1..1, stable per person
+    const young = spec.age === 'young' || (typeof spec.age === 'number' && spec.age < 30);
+    const older = spec.age === 'older' || (typeof spec.age === 'number' && spec.age >= 45);
     return {
-      eyeY: 0.04, eyeX: 0.2, eyeRx: 0.094, eyeRy: 0.105, pupil: 0.071, lashes: f, brow: hairOf(spec.hairColor === 'hairBlonde' ? 'hairBrown' : spec.hairColor), browW: f ? 0.035 : 0.05,
-      browLift: 0.05, mouthY: 0.27, mouthW: 0.16, expr, skin: skinOf(spec.skin), glasses: !!spec.glasses, lines: spec.age === 'older', blush: COL.blush,
-      moustache: spec.beard === 'full' ? { color: hairOf(spec.hairColor) } : null, seed: L.hash(spec.id) % 1000,
+      eyeY: 0.03, eyeX: 0.2 + v(0) * 0.012, eyeRx: 0.089 + (young ? 0.006 : 0), eyeRy: 0.092 + (young ? 0.008 : 0) + v(1) * 0.005, pupil: 0.064,
+      lashes: false, brow: browOf(spec.hairColor), browW: 0.058 + v(2) * 0.012, browLift: 0.026 + v(3) * 0.01,
+      mouthY: 0.27, mouthW: 0.16 + v(4) * 0.015, expr, skin: skinOf(spec.skin), glasses: !!spec.glasses,
+      lines: older, forehead: older, blush: L.rgba(P.confettiD, young ? 0.22 : 0.16),
+      moustache: spec.beard === 'moustache' || spec.beard === 'short' ? { color: hairOf(spec.hairColor), thin: spec.beard === 'short' } : null,
+      seed: h % 1000,
     };
   }
 
@@ -1682,11 +1705,11 @@
     const st = {
       kind: 'team', spec, skin: skinOf(spec.skin), top, topColor: color, sleeve, sleeveColor: color,
       sleeveTrim: jersey ? COL.white : octo ? P.fesbBlue : null, cuffColor: top === 'shirt' ? L.mix(color, P.gloss, 0.2) : L.mix(color, P.outline, 0.15),
-      legColor: LEGS[spec.legs] || COL.jeans, shoe: spec.gender === 'f' && spec.legs === 'dark' ? COL.shoeBrown : COL.shoe,
+      legColor: LEGS[spec.legs] || COL.jeans, shoe: spec.legs === 'chinos' ? COL.shoeBrown : COL.shoe,
       hair: spec.hair, hairColor: spec.hairColor, back, look, hands: p.hands, gleam: o.gleam || 0,
       faceKey: spec.id, face: teamFace(spec, p.expr), side: side ? 1 : 0,
       armBehind: !back && Math.abs(c) < 0.4 ? (sin(ph) > 0 ? 'R' : 'L') : null,
-      sitBack: p.seat && back,
+      sitBack: p.seat && back, upper: !!o.upper,
     };
     if (o.hands) st.hands = o.hands;
     if (outfit === 'pull') {
@@ -1933,7 +1956,7 @@
     if (alpha <= 0) return;
     const R = makeRig(ctx, x, y, w, { line: o.line || 'hero', draw: o.draw, flip: o.flip }, 'chefBeard', 360);
     // local units: 1 % of w; bottom edge at y = 0
-    const pts = [[-50, -140], [50, -140], [51, -40]];
+    const pts = [[-50, -75], [50, -75], [51, -40]];
     const n = 9;
     for (let i = 0; i <= n; i++) {
       const u = i / n;
