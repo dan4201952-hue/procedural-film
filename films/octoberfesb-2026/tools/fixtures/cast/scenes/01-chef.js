@@ -26,7 +26,6 @@ FILM.scene({
     ];
     row1.forEach(([name, pose], i) => {
       const x = 140 + i * 250;
-      shadow(x, y1, 90);
       C.chef(ctx, x, y1, h1, pose, { line: 'hero' });
       label(name, x, y1 + 32);
     });
@@ -40,7 +39,6 @@ FILM.scene({
     ];
     row2.forEach(([name, pose, o], i) => {
       const x = 170 + i * 270;
-      shadow(x, y2, 90);
       C.chef(ctx, x, y2, h2, pose, Object.assign({ line: 'hero' }, o));
       label(name, x, y2 - h2 - 12);
     });
@@ -63,7 +61,7 @@ FILM.scene({
     ctx.fillStyle = L.rgba(P.hallDim, 0.1);
     ctx.fill();
     ctx.clip();
-    C.chef(ctx, 1730, 1575, 1500, { name: 'stand' }, { line: 'hero', gleam: 0.3 });
+    C.chef(ctx, 1730, 1560, 1500, { name: 'stand' }, { line: 'hero' });
     ctx.restore();
   },
 });

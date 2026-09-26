@@ -17,21 +17,21 @@ FILM.scene({
     if (t < 0.5) {
       for (let i = 0; i < 15; i++) {
         const x = 140 + i * 117, y = 470;
-        shadow(x, y, 50);
         C.person(ctx, T[i], x, y, 360, { name: 'stand' }, {});
         label(T[i].id, x, 500);
+        if (T[i].label) label(T[i].label.replace('tall and stocky', 'tall, broad'), x, i % 2 ? 546 : 525);
       }
-      // face close-ups (the same drawing at 1100 px): the first eight, then the last eight
+      // face close-ups (the same drawing at 1000 px): the first eight, then the last eight
       const first = t < 0.25 ? 0 : 7;
       for (let j = 0; j < 8; j++) {
         const s = T[first + j], x0 = 12 + j * 238;
         ctx.save();
         ctx.beginPath();
-        ctx.rect(x0, 560, 230, 440);
+        ctx.rect(x0, 560, 230, 400);
         ctx.fillStyle = L.rgba(P.hallDim, 0.08);
         ctx.fill();
         ctx.clip();
-        C.person(ctx, s, x0 + 115, 700 + 974 * s.tall, 1100, { name: 'stand' }, {});
+        C.person(ctx, s, x0 + 115, 700 + 907 * s.tall, 1000, { name: 'stand' }, { shadow: false });
         ctx.restore();
       }
       return;
@@ -50,9 +50,9 @@ FILM.scene({
       ['cheer', T[2], { name: 'cheer' }, { outfit: 'jersey' }],
       ['catch .5', T[3], { name: 'catch', k: 0.5 }, {}],
     ];
+    C.person(ctx, T[12], sx + 4 * dx, 470, 330, { name: 'clap', t: 0.1 }, {});
     top.forEach(([n, s, pose, o], i) => {
       const x = sx + i * dx;
-      shadow(x, 470, 55);
       C.person(ctx, s, x, 470, 330, pose, o);
       label(n, x, 500);
     });
@@ -62,10 +62,9 @@ FILM.scene({
       ['pullOn .7', T[7], { name: 'pullOn', k: 0.7 }, {}],
       ['reach, mug', T[9], { name: 'reach' }, { mug: { fill: 0.85, foam: 1 } }],
     ];
-    top.push(['look', T[12], { name: 'look' }, { look: 0.8 }]);
+
     bot.forEach(([n, s, pose, o], i) => {
       const x = sx + i * dx;
-      shadow(x, 960, 55);
       C.person(ctx, s, x, 960, 330, pose, o);
       label(n, x, 590);
     });
