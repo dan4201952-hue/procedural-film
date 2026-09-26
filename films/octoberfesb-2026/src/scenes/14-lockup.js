@@ -72,7 +72,7 @@
       // 3. the Prost! sticker and the ribbon caption: screen-fixed, never under the camera
       const popProst = clamp((t - 2.5) / 0.1667); // T 33.0
       if (popProst > 0.002) {
-        FILM.props.caption(ctx, 'Prost!', 1500, 280, 105, { align: 'center', pop: popProst, rot: -0.08 });
+        FILM.props.caption(ctx, 'Prost!', 1500, 280, 105, { align: 'center', pop: popProst, rot: -0.14 });
       }
       const ribbon = clamp((t - 3.0) / 0.6); // T 33.5
       if (ribbon > 0.002) {
