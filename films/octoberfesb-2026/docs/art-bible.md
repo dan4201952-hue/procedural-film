@@ -196,7 +196,10 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 
 ### 10.3 The team
 
-- Fifteen teammates (the real team is 15 people plus the chef) of mixed ages, genders, skin tones (skinA to skinD) and hair (short, long, bun, curls, ponytail; hairBlonde, hairBrown, hairBlack, hairRed), some with glasses, two with beards (not bald, so the chef stays unique).
+- Fifteen teammates (the real team is 15 people plus the chef), all white men (skinA and skinB only).
+- Ages vary: most (nine or ten) look 30 to 40, three or so look in their twenties, and two or three look older (45 to 60, greying or grey hair, a few forehead lines).
+- Vary them by hair (short, buzz cut, side part, curly, quiff, long-ish tied back, receding for an older one; hairBlonde, hairBrown, hairBlack, hairRed, grey for the older ones), facial hair (clean-shaven, stubble, short beard, moustache; about a third with some beard, kept short or light so the chef's full dark beard stays unique), glasses on three or four, and build (slim, average, stocky).
+- Nobody is bald except the chef.
 - Before the t-shirts: casual shirts and sweaters in muted colours (grey, olive, mustard, maroon, denim).
 - After the t-shirts: every teammate in the fesbBlue jersey tee (10.8).
 - Built parametrically by `FILM.cast.person(ctx, spec, pose)` so the same person looks the same in every shot; the spec table lives in `src/cast.js` as `FILM.cast.TEAM`.

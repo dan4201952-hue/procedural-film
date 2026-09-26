@@ -43,7 +43,7 @@ Common rules for every function:
 
 | Function | What it draws |
 |---|---|
-| `TEAM` | Array of 15 teammate specs (the team is 15 people) `{ id, skin, hair, hairColor, glasses, beard, build, shirt, gender }`, fixed, varied per art bible 10.3. |
+| `TEAM` | Array of 15 teammate specs (the team is 15 white men of mixed ages, art bible 10.3) `{ id, skin, age, hair, hairColor, glasses, beard, build, shirt }`, fixed, varied per art bible 10.3. |
 | `person(ctx, spec, x, y, h, pose, o)` | A teammate (art bible 10.3). `pose` is `{ name, k, t }`: names 'stand', 'sit' (seated on a bench, y is the seat), 'back' (seen from behind), 'turn' (k 0 front → 1 back), 'cheer' (arms up), 'reach' (arm out holding a mug, `o.mug` opts), 'catch' (k 0..1 hands up then hugging a shirt), 'pullOn' (k 0..1 pulling a jersey on), 'look' (head turned by `o.look` -1..1). `o.outfit` 'casual' \| 'jersey' \| 'octoTee'. `o.view` 'front' \| 'side'. Returns `{ hand: [x, y], head: [x, y] }`. |
 | `chef(ctx, x, y, h, pose, o)` | The chef (art bible 10.1), party outfit. `pose` `{ name, k, t }`: 'stand', 'tieBandana' (k 0..1), 'salsa' (t in seconds drives the basic step on 8ths at 120 bpm), 'spin' (k 0..1 one full turn), 'throw' (k 0..1, right arm), 'raiseMug' (k 0..1), 'armsCrossed', 'nod' (k), 'grin'. `o.bandana` true, `o.gleam` 0..1 head gleam flare, `o.mug` opts object or null (the hero mug in his right hand, drawn with `FILM.props.mug`), `o.look` -1..1. Returns `{ handR: [x, y], handL: [x, y], head: [x, y] }`. |
 | `chefHand(ctx, x, y, s, o)` | The chef's right hand in the navy hoodie sleeve seen from above, index finger extended; `o.press` 0..1 bends the finger down. (x, y) is the fingertip. |
