@@ -143,7 +143,7 @@ Light comes from the upper left (warm, hall lamps); a cooler bounce light from t
 
 ### 4.1 People
 
-- Realistic adult proportions: the head is about 1/7 of the height for the team and the waitress, about 1/6.5 for the chef (sturdy, broad shoulders, a slight belly). No big-head chibi look.
+- Realistic adult proportions: the head is about 1/7 of the height for everyone, the chef included. No big-head chibi look.
 - Bodies are smooth closed silhouettes per part (torso with chest, shoulders and waist; upper arm with the deltoid, forearm tapering to the wrist; hands with fingers and a thumb; thigh, knee, calf, ankle), overlapped so clothing hides the joints. Never a visible joint disc, ball or capsule end.
 - Faces semi-realistic: almond eyes with a coloured iris, pupil, catch-light, upper lid line and a soft lid shadow; eyebrows as shaped strokes; a nose with a bridge shadow, a lit tip and nostrils; lips with an upper-lip line and a lit lower lip, teeth when grinning; cheekbone, jaw and under-chin shading; ears with inner detail. Men have no eyelash strokes and at most a faint warm cheek tone.
 - Expressions are lively and readable at 300 px figure height: smiles lift the cheeks and crinkle the eyes.
@@ -199,7 +199,7 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 - About 45 to 50 years old: a mature, energetic man, faint forehead lines and slight crow's feet when he smiles, only a touch of grey in the black beard and brows.
 - Light skin (chefSkin). Clean-shaven bald head, round with a strong white gleam on the upper left (a 40 px soft stroke plus a star sparkle that pings on the downbeats in 09).
 - A neat, short, trimmed beard shaped as in the client's reference photo: black with just a light sprinkle of grey (beard, beardLight on the lit side, a few short beardGrey hairs mostly on the chin and sideburns), closely trimmed along the jaw, a little fuller on the chin, the cheek line clean and low, joined to a short moustache; tidy, never bushy. Thick, straight-ish black eyebrows (chefBrow) with a couple of grey hairs. Brown eyes, a strong straight nose, faint forehead lines, and he is almost always smiling: a bright open smile at rest, a big laughing grin with teeth when he performs.
-- Sturdy build, head about 1/6.5 of his height, broad shoulders, a slight belly.
+- Lean, wiry, fit build (поджарый): narrow waist, flat stomach, defined forearms and calves, no belly; shorter than most of the team (height 0.95 of the team average, so the tall teammates stand a head above him). His energy, not his size, fills the room.
 - Party outfit: white shirt with rolled sleeves, lederhosen suspenders with a cross strap, lederhosen shorts, knee socks, brown shoes.
 - The red bandana (bandana with bandanaDot dots) is tied over the head with the knot and two short tails at the back of the head; the tails flutter on turns.
 - Office (shot 02): only his hand in a dark navy hoodie sleeve and the edge of his chin with the short trimmed beard entering from the top of the frame. The face is never shown before 09.
