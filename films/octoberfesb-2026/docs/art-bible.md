@@ -182,13 +182,13 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 
 - About 45 to 50 years old: a mature, energetic man, faint forehead lines and slight crow's feet when he smiles, only a touch of grey in the black beard and brows.
 - Light skin (chefSkin). Clean-shaven bald head, round with a strong white gleam on the upper left (a 40 px soft stroke plus a star sparkle that pings on the downbeats in 09).
-- A neat, short, trimmed beard shaped as in the client's reference photo: black with just a light sprinkle of grey (beard, beardLight on the lit side, a few short beardGrey hairs mostly on the chin and sideburns), closely trimmed along the jaw, a little fuller on the chin, the cheek line clean and low, joined to a short moustache; tidy, never bushy. Thick, straight-ish black eyebrows (chefBrow) with a couple of grey hairs. Brown eyes, a strong straight nose, faint forehead lines, a calm confident half-smile at rest and a warm grin with teeth when he performs.
+- A neat, short, trimmed beard shaped as in the client's reference photo: black with just a light sprinkle of grey (beard, beardLight on the lit side, a few short beardGrey hairs mostly on the chin and sideburns), closely trimmed along the jaw, a little fuller on the chin, the cheek line clean and low, joined to a short moustache; tidy, never bushy. Thick, straight-ish black eyebrows (chefBrow) with a couple of grey hairs. Brown eyes, a strong straight nose, faint forehead lines, and he is almost always smiling: a bright open smile at rest, a big laughing grin with teeth when he performs.
 - Sturdy build, head about 1/6.5 of his height, broad shoulders.
 - Party outfit: white shirt with rolled sleeves, lederhosen suspenders with a cross strap, lederhosen shorts, knee socks, brown shoes.
 - The red bandana (bandana with bandanaDot dots) is tied over the head with the knot and two short tails at the back of the head; the tails flutter on turns.
 - Office (shot 02): only his hand in a dark navy hoodie sleeve and the edge of his chin with the short trimmed beard entering from the top of the frame. The face is never shown before 09.
 - Salsa: the basic step is forward-back on counts 1-2-3 and 5-6-7, holding on 4 and 8, with hip sway opposite the stepping foot, elbows bent at 90 degrees, and a right-hand spin that takes one beat. Poses change on every 8th.
-- Portray him with affection: charismatic host, never a clown.
+- Character: cheerful, active, fun-loving, the life of the party. He never stands still: bouncing on his toes, shoulders moving to the music, big open gestures, eyebrows up, eyes crinkled with laughter. Portray him with affection: a charismatic, joyful host, never a clown.
 
 ### 10.2 The waitress
 
