@@ -4,10 +4,10 @@
 //   2. Back row: eight teammates standing, x 200-1640.
 //   3. Front row: seven teammates crouching in the gaps between the back row.
 //   4. The chef at the right edge, arms crossed, nodding at T 24.5.
-// Motion: T 22.5-23.0 everyone pulls a fesbBlue jersey on; T 23.0-24.0 a left-to-right turning
-// wave, one column (a back-row man plus the front-row man ahead of him) per 16th note; T 24.0-25.0
-// all hold while the "FESB 9" print on every back gleams in the same left-to-right order. A slight
-// 1.00 -> 1.04 push-in runs the whole shot.
+// Motion: everyone opens already in their fesbBlue jerseys, front view, with a small bounce on the
+// downbeat at T 22.5; T 23.0-24.0 a left-to-right turning wave, one column (a back-row man plus
+// the front-row man ahead of him) per 16th note; T 24.0-25.0 all hold while the "FESB 9" print on
+// every back gleams in the same left-to-right order. A slight 1.00 -> 1.04 push-in runs the shot.
 (function () {
   'use strict';
   const ID = 'jersey-wall';
@@ -25,7 +25,7 @@
   const FRONT_TEAM = [9, 10, 3, 11, 12, 13, 14];
 
   // Timing (shot-local seconds; T = 22.5 + t).
-  const PULLON_DUR = 0.5; // T 22.5-23.0
+  const BOUNCE_DUR = 4 / 24; // a small squash-and-settle on the opening downbeat, T 22.5
   const TURN_START = 0.5; // T 23.0
   const TURN_STEP = 0.125; // one 16th per column
   const TURN_DUR = 0.125; // ~3 frames per column
@@ -74,18 +74,25 @@
           const start = HOLD_START + (idx * (HOLD_END - HOLD_START - GLEAM_DUR)) / (G.slots.length - 1);
           return L.clamp((t - start) / GLEAM_DUR);
         };
+        // a single small squash-and-settle bounce for everyone together on the opening downbeat
+        const bounceK = L.clamp(t / BOUNCE_DUR);
+        const squash = L.lerp(0.88, 1, L.ease.outBack(bounceK));
         for (let i = 0; i < G.slots.length; i++) {
           const s = G.slots[i];
           const crouch = s.row === 'front';
           const refH = crouch ? FRONT_REF_H : REF_H;
-          let pose, gleam = 0;
-          if (t < PULLON_DUR) {
-            pose = { name: 'pullOn', k: L.clamp(t / PULLON_DUR), crouch };
+          const gleam = t >= HOLD_START ? gleamK(i) : 0;
+          const pose = { name: 'turn', k: turnK(s.col), crouch };
+          if (squash < 1) {
+            ctx.save();
+            ctx.translate(s.x, s.y);
+            ctx.scale(1, squash);
+            ctx.translate(-s.x, -s.y);
+            CAST.person(ctx, s.spec, s.x, s.y, refH, pose, { outfit: 'jersey', gleam });
+            ctx.restore();
           } else {
-            pose = { name: 'turn', k: turnK(s.col), crouch };
-            if (t >= HOLD_START) gleam = gleamK(i);
+            CAST.person(ctx, s.spec, s.x, s.y, refH, pose, { outfit: 'jersey', gleam });
           }
-          CAST.person(ctx, s.spec, s.x, s.y, refH, pose, { outfit: 'jersey', gleam });
         }
 
         // 4. the chef, arms crossed, grinning, a single nod at T 24.5 --------------------------

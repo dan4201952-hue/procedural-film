@@ -28,14 +28,84 @@
   const FANL = [1300, 600], FANR = [1660, 600];
   const TAP = [200, 1000], TABLE = [1760, 900];
 
-  // waitress silhouette: a simple dirndl-bell torso polygon (closed, clockwise) plus a head circle
-  const HEAD_R = 68, HEAD_CY = 248;
-  const TORSO = [
-    [1454, 316], [1410, 378], [1385, 520], [1340, 900], [1420, 1000],
-    [1540, 1000], [1620, 900], [1575, 520], [1550, 378], [1506, 316],
-  ];
-  const SHOULDER_L = [1410, 378], SHOULDER_R = [1550, 378];
-  const HAND_L = [1370, 600], HAND_R = [1590, 600];
+  // waitress silhouette (dirndl): head + braided crown, puffed sleeves, laced bodice, flared skirt
+  // with an apron and bow, shoes; arms reach straight out to the two mug fans (art bible 10.2).
+  const CX = 1480;
+  const HEAD_R = 56, HEAD_CY = 244;
+  const SHOULDER_Y = 344, WAIST_Y = 520, HEM_Y = 900, FOOT_Y = 1000;
+  const BODICE = [[CX - 68, SHOULDER_Y], [CX - 60, WAIST_Y], [CX + 60, WAIST_Y], [CX + 68, SHOULDER_Y]];
+  const SKIRT = [[CX - 62, WAIST_Y], [CX - 234, HEM_Y], [CX + 234, HEM_Y], [CX + 62, WAIST_Y]];
+  const APRON = [[CX - 52, WAIST_Y + 4], [CX - 86, 758], [CX + 86, 758], [CX + 52, WAIST_Y + 4]];
+  const SLEEVE_L = [CX - 92, SHOULDER_Y + 14], SLEEVE_R = [CX + 92, SHOULDER_Y + 14];
+  const SLEEVE_RAD = 34;
+  // her hands reach straight out to the two mug fans
+  const HAND_L = FANL, HAND_R = FANR;
+  const SHOE_L = [CX - 34, FOOT_Y], SHOE_R = [CX + 30, FOOT_Y];
+  const BOW_AT = [CX + 66, WAIST_Y + 6]; // her left, the viewer's right (art bible 10.2)
+
+  /** A braided band across the top of the head, with short cross-ticks suggesting the braid. */
+  function braidCrown(ctx, cx, cy, r) {
+    const rad = (d) => (d * Math.PI) / 180;
+    const rB = r + 9;
+    ctx.save();
+    ctx.strokeStyle = L.rgba(P.paleBlue, 0.7);
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rB, rad(198), rad(342));
+    ctx.stroke();
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let i = 0; i <= 7; i++) {
+      const a = rad(198 + (144 * i) / 7);
+      const x0 = cx + Math.cos(a) * (rB - 6), y0 = cy + Math.sin(a) * (rB - 6);
+      const x1 = cx + Math.cos(a) * (rB + 6), y1 = cy + Math.sin(a) * (rB + 6);
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** A small schematic bow-knot glyph. */
+  function drawBow(ctx, x, y, s) {
+    ctx.save();
+    ctx.strokeStyle = L.rgba(P.paleBlue, 0.75);
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - s, y - s * 0.62);
+    ctx.lineTo(x - s * 0.22, y);
+    ctx.lineTo(x - s, y + s * 0.62);
+    ctx.closePath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + s, y - s * 0.62);
+    ctx.lineTo(x + s * 0.22, y);
+    ctx.lineTo(x + s, y + s * 0.62);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.strokeRect(x - s * 0.16, y - s * 0.24, s * 0.32, s * 0.48);
+    ctx.restore();
+  }
+
+  /** A small shoe glyph, toe pointing away from cx. */
+  function drawShoe(ctx, x, y, flip) {
+    const s = flip ? -1 : 1;
+    ctx.save();
+    ctx.strokeStyle = L.rgba(P.paleBlue, 0.7);
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 16 * s, y - 14);
+    ctx.lineTo(x - 16 * s, y + 6);
+    ctx.quadraticCurveTo(x - 16 * s, y + 16, x + 4 * s, y + 16);
+    ctx.lineTo(x + 24 * s, y + 16);
+    ctx.quadraticCurveTo(x + 30 * s, y + 16, x + 24 * s, y + 8);
+    ctx.lineTo(x + 6 * s, y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
 
   /** A closed polygon as a primary double outline (art bible section 5): lineWhite outer, paleBlue inner. */
   function primaryPoly(ctx, pts, gap) {
@@ -215,13 +285,27 @@
         ctx.restore();
       }
 
-      // 3: the waitress silhouette at G2 + her ten mugs as message boxes
-      primaryCircle(ctx, FEET[0], HEAD_CY, HEAD_R, 9);
-      primaryPoly(ctx, TORSO, 10);
-      secLine(ctx, [SHOULDER_L, HAND_L], { width: 5 });
-      secLine(ctx, [SHOULDER_R, HAND_R], { width: 5 });
-      primaryCircle(ctx, HAND_L[0], HAND_L[1], 10, 4);
-      primaryCircle(ctx, HAND_R[0], HAND_R[1], 10, 4);
+      // 3: the waitress — a recognisable dirndl silhouette at G2 — + her ten mugs as message boxes
+      primaryPoly(ctx, SKIRT, 10);
+      secLine(ctx, APRON, { closed: true, width: 2 });
+      drawBow(ctx, BOW_AT[0], BOW_AT[1], 20);
+      primaryPoly(ctx, BODICE, 8);
+      secLine(ctx, [[CX - 2, SHOULDER_Y + 20], [CX - 2, WAIST_Y - 10]], { width: 1.6 });
+      for (let i = 0; i < 4; i++) {
+        const y = L.lerp(SHOULDER_Y + 28, WAIST_Y - 14, i / 3);
+        secLine(ctx, [[CX - 18, y - 6], [CX - 2, y]], { width: 1.6 });
+        secLine(ctx, [[CX + 18, y + 6], [CX + 2, y]], { width: 1.6 });
+      }
+      secLine(ctx, [SLEEVE_L, HAND_L], { width: 5 });
+      secLine(ctx, [SLEEVE_R, HAND_R], { width: 5 });
+      secLine(ctx, [[SLEEVE_L[0], SLEEVE_L[1]], [SLEEVE_L[0] - 14, SLEEVE_L[1] + 22]], { width: 5 });
+      secLine(ctx, [[SLEEVE_R[0], SLEEVE_R[1]], [SLEEVE_R[0] + 14, SLEEVE_R[1] + 22]], { width: 5 });
+      primaryCircle(ctx, SLEEVE_L[0], SLEEVE_L[1], SLEEVE_RAD, 6);
+      primaryCircle(ctx, SLEEVE_R[0], SLEEVE_R[1], SLEEVE_RAD, 6);
+      primaryCircle(ctx, CX, HEAD_CY, HEAD_R, 9);
+      braidCrown(ctx, CX, HEAD_CY, HEAD_R);
+      drawShoe(ctx, SHOE_L[0], SHOE_L[1], true);
+      drawShoe(ctx, SHOE_R[0], SHOE_R[1], false);
 
       for (let i = 0; i < BOXES.length; i++) {
         const [bx, by] = BOXES[i];

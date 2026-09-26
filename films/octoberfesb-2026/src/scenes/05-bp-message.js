@@ -61,6 +61,55 @@
     ctx.restore();
   }
 
+  /**
+   * A translucent schemBeer overlay inside the hero mug's glass at G1, on top of props.mug's own
+   * blueprint fill, so the beer reads as liquid (tint + bright surface line + a few bubbles) rather
+   * than a flat block. Geometry mirrors the Maß (art bible 10.4): base centre (960, 900), height 520.
+   */
+  function beerGlow(ctx, cx, baseY, h, fill, seed) {
+    const u = h / 100;
+    const hwB = 34.6, hwT = 32.7, wall = 3.2, base = 12;
+    const innerHalf = (ly) => (hwB + (hwT - hwB) * (-ly / 100) - wall) * u;
+    const surfLy = -(base + fill * (100 - base));
+    const baseLy = -base;
+    const steps = 10;
+    const path = new Path2D();
+    for (let i = 0; i <= steps; i++) {
+      const ly = L.lerp(surfLy, baseLy, i / steps);
+      const y = baseY + u * ly, hw = innerHalf(ly);
+      if (i) path.lineTo(cx - hw, y); else path.moveTo(cx - hw, y);
+    }
+    for (let i = steps; i >= 0; i--) {
+      const ly = L.lerp(surfLy, baseLy, i / steps);
+      path.lineTo(cx + innerHalf(ly), baseY + u * ly);
+    }
+    path.closePath();
+    const surfY = baseY + u * surfLy, botY = baseY + u * baseLy;
+    const midHalf = innerHalf((surfLy + baseLy) / 2);
+    ctx.save();
+    ctx.clip(path);
+    ctx.fillStyle = L.rgba(P.schemBeer, 0.25);
+    ctx.fillRect(cx - midHalf - 6, surfY - 2, 2 * midHalf + 12, botY - surfY + 6);
+    for (let i = 0; i < 6; i++) {
+      const rx = (L.h3(i, 1, seed) - 0.5) * 1.5 * midHalf;
+      const ry = L.lerp(surfY + 10, botY - 8, L.h3(i, 2, seed));
+      const rr = 2 + L.h3(i, 3, seed) * 3;
+      ctx.fillStyle = L.rgba(P.gloss, 0.4);
+      ctx.beginPath();
+      ctx.arc(cx + rx, ry, rr, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = P.schemBeer;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx - innerHalf(surfLy), surfY);
+    ctx.lineTo(cx + innerHalf(surfLy), surfY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function checkMark(ctx, x, y, s, alpha) {
     if (alpha <= 0) return;
     ctx.save();
@@ -81,7 +130,7 @@
   const LABELS = [
     { k: 0, text: 'payload: 1 л', tx: 792, ty: 758, lx: 210, ly: 758, align: 'left' },
     { k: 1, text: 'header: пена', tx: 878, ty: 302, lx: 220, ly: 246, align: 'left' },
-    { k: 2, text: 'id: FESB-9', tx: 1136, ty: 640, lx: 1340, ly: 600, align: 'left' },
+    { k: 2, text: 'id: FESB-9', tx: 1014, ty: 640, lx: 1340, ly: 600, align: 'left' },
   ];
   const LBL_START = 0.25, LBL_STEP = 0.25, LBL_DUR = 0.22;
 
@@ -106,6 +155,7 @@
       FILM.props.mug(ctx, 960, 900, 520, {
         fill: 0.88, foam: 1, logo: true, blueprint: true, line: 'hero', seed: sd('mug'),
       });
+      beerGlow(ctx, 960, 900, 520, 0.88, sd('beerglow'));
 
       // 3: heading + small FESB line logo
       L.text(ctx, 'Сообщение создано', 180, 190, { size: 56, weight: 800, color: P.lineWhite });

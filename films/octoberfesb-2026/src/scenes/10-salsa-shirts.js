@@ -2,18 +2,25 @@
 // Handoff: 09 -> 10 is a hard cut; the chef's salsa step keeps counting from info.T - 17.5 so it
 // does not jump at the cut (09 drives the same pose from the same clock).
 //
+// Composition (director's note on the first cut, addressed here): the chef is the clear foreground
+// hero, large (h 750, feet y 1030) and drawn last of the cast so nothing (table or teammate) ever
+// overlaps him; the two long tables run left and right of him at a smaller, mid-depth scale, the
+// fifteen teammates seated along them facing the aisle/camera; the waitresses stand grounded on
+// table A's own floor line, behind it, so they read as standing at the back, not floating.
+//
 // Layers back to front:
 //   1. Hall background ('hall' variant), full brightness, panning 0.6x with the foreground (its own
 //      parallax, art bible 1.2's three depth layers) as the camera follows the chef.
 //   2. Bunting + bulb garland across the ceiling.
-//   3. The four waitresses at the very back, clapping along.
-//   4. Table A (far side of the aisle): 8 teammates seated on its aisle-facing bench.
-//   5. The crate stencilled with the FESB mark, at the chef's starting mark.
-//   6. The chef, dancing the salsa basic down the aisle (x 700 -> 1200) and throwing all fifteen
-//      t-shirts, one per 8th.
-//   7. The fifteen t-shirts: in flight (parabolic arc, dashed gold motion trail) or caught and
-//      hugged by their teammate.
-//   8. Table B (near side of the aisle): 7 teammates seated on its aisle-facing bench.
+//   3. The four waitresses, grounded on table A's floor line, clapping (its structure partly hides
+//      their legs, so they read as standing at the back of the hall).
+//   4. Table A (far, smaller): 8 teammates seated on its aisle-facing bench.
+//   5. Table B (near-mid, larger): 7 teammates seated on its aisle-facing bench.
+//   6. The crate stencilled with the FESB mark, at the chef's starting mark.
+//   7. The chef (hero): dancing the salsa basic down the aisle (x 700 -> 1200) and throwing all
+//      fifteen t-shirts, one per 8th. Drawn after every table and teammate so nothing overlaps him.
+//   8. The fifteen t-shirts, on top of everything: in flight (parabolic arc, dashed gold motion
+//      trail) or caught and hugged by their teammate.
 // Camera: a slow pan following the chef (a plain horizontal translate; the background parallaxes
 // under its own camX so no gap opens at the edges).
 (function () {
@@ -26,17 +33,21 @@
   const sd = (...k) => FILM.lib.hash(ID, ...k) & 0x7fffffff;
 
   // --- staging -------------------------------------------------------------------------------
-  // hallBack's 'hall' variant meets the floor at y 700 (wall panelling runs 160-700 above it), so
-  // every table's legs are sized to land its feet at or past that line — nothing stands in the wall.
-  const CHEF_X0 = 700, CHEF_X1 = 1200, CHEF_Y = 780, CHEF_H = 360;
-  const TABLE_A_X = 960, TABLE_A_Y = 560, TABLE_A_W = 2000, TABLE_A_LEGS = 140, TABLE_A_H = 260;
-  const TABLE_B_X = 960, TABLE_B_Y = 860, TABLE_B_W = 2060, TABLE_B_LEGS = 180, TABLE_B_H = 380;
-  const CRATE_X = 660, CRATE_Y = 760, CRATE_W = 130;
-  // Both benches are drawn with o.upper (person's documented idiom for "people behind a table": cheap,
-  // no legs to solve or draw), so teammates stand at the table's own floor line (y + legs), letting
-  // ordinary standing proportions put their torso at the tabletop.
+  // The chef is the large foreground hero (director's note): feet near the bottom of the frame,
+  // tall enough that the mid-depth tables (smaller, higher up) never compete with him for attention.
+  const CHEF_X0 = 700, CHEF_X1 = 1200, CHEF_Y = 1030, CHEF_H = 750;
+  // Two long tables at mid-depth, smaller than the chef, running the full width either side of
+  // wherever he currently stands. Both benches are drawn with o.upper (person's documented idiom
+  // for "people behind a table": cheap, no legs to solve, and they face the camera/aisle).
+  const TABLE_A_X = 960, TABLE_A_Y = 440, TABLE_A_W = 2000, TABLE_A_LEGS = 110, TABLE_A_H = 190;
+  const TABLE_B_X = 960, TABLE_B_Y = 640, TABLE_B_W = 2060, TABLE_B_LEGS = 150, TABLE_B_H = 260;
   const FLOOR_A = TABLE_A_Y + TABLE_A_LEGS;
   const FLOOR_B = TABLE_B_Y + TABLE_B_LEGS;
+  // The waitresses stand just past table A's top edge and are drawn before it, so its own wood
+  // panel (top to floor) hides their legs while their clapping arms clear it — grounded at the
+  // back, not floating at chandelier height.
+  const WAIT_Y = TABLE_A_Y + 40, WAIT_H = 190;
+  const CRATE_X = 640, CRATE_Y = 1000, CRATE_W = 190;
 
   // --- timing (shot-local seconds; T = 18.5 + t) ----------------------------------------------
   const THROW_STEP = 0.25;              // one 8th at 120 bpm
@@ -158,17 +169,20 @@
       ctx.save();
       ctx.translate(-panX, 0);
 
-      // 2. bunting + garland across the ceiling, plus table A's structure (cached: see cachedLayer) --
-      cachedLayer(ctx, L, 'back', -300, 2220, Tg, (g, b) => {
-        PROPS.bunting(g, -260, 130, 2180, 130, 48, { seed: sd('bunt'), boil: b });
-        PROPS.garland(g, -240, 178, 2160, 178, 42, { glow: 1, seed: sd('gar'), boil: b });
-        PROPS.table(g, TABLE_A_X, TABLE_A_Y, TABLE_A_W, { depth: 24, legs: TABLE_A_LEGS, bench: 'front', seed: sd('tblA'), boil: b });
-      });
-
-      // 3. the four waitresses at the back, clapping --------------------------------------------
+      // 2. the four waitresses, grounded on table A's floor line but drawn before its structure so
+      //    the table's own wood panel hides their legs — standing at the back, not floating. --------
       const WHO = ['liesl', 'resi', 'vroni', 'gretl'];
       const WX = [460, 760, 1180, 1470];
-      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], 430, 165, { name: 'clap', t: Tg }, { who: WHO[i], carry: 'none' });
+      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], WAIT_Y, WAIT_H, { name: 'clap', t: Tg }, { who: WHO[i], carry: 'none' });
+
+      // 3. bunting + garland across the ceiling, plus both tables' structure (cached: see cachedLayer);
+      //    table A's panel is drawn here, on top of the waitresses' legs from step 2. ----------------
+      cachedLayer(ctx, L, 'furniture', -300, 2220, Tg, (g, b) => {
+        PROPS.bunting(g, -260, 130, 2180, 130, 48, { seed: sd('bunt'), boil: b });
+        PROPS.garland(g, -240, 178, 2160, 178, 42, { glow: 1, seed: sd('gar'), boil: b });
+        PROPS.table(g, TABLE_A_X, TABLE_A_Y, TABLE_A_W, { depth: 20, legs: TABLE_A_LEGS, bench: 'front', seed: sd('tblA'), boil: b });
+        PROPS.table(g, TABLE_B_X, TABLE_B_Y, TABLE_B_W, { depth: 28, legs: TABLE_B_LEGS, bench: 'front', seed: sd('tblB'), boil: b });
+      });
 
       // helper: draws a seated teammate behind the table (o.upper: cheap, and the documented idiom
       // for "people behind a table") — idle until their catch window brings their arms up into a
@@ -183,17 +197,15 @@
         }
       }
 
-      // 4. table A's 8 seats (its wooden structure was already painted into the cached back layer) --
-      for (const s of G.seats) {
-        if (s.table !== 'A') continue;
-        drawSeat(s, FLOOR_A, TABLE_A_H);
-      }
+      // 4. both tables' seats — mid-depth, well clear of the chef's own foreground band -------------
+      for (const s of G.seats) drawSeat(s, s.table === 'A' ? FLOOR_A : FLOOR_B, s.table === 'A' ? TABLE_A_H : TABLE_B_H);
 
-      // 5. the crate at the chef's starting mark --------------------------------------------------
+      // 5. the crate at the chef's starting mark, at his feet in the foreground ----------------------
       drawCrate(ctx, L, P, CRATE_X, CRATE_Y, CRATE_W, sd('crate'));
 
-      // 6. the chef: continuous salsa, punctuated by a throw pulse on every 8th, with a spin
-      //    flourish woven in around T 21.0 --------------------------------------------------------
+      // 6. the chef (hero): continuous salsa, punctuated by a throw pulse on every 8th, with a spin
+      //    flourish woven in around T 21.0. Drawn after every table and teammate, so nothing ever
+      //    overlaps him. -------------------------------------------------------------------------
       let chefPose = null;
       for (let i = 0; i < N_THROWS; i++) {
         const ti = throwTime(i);
@@ -208,36 +220,27 @@
       if (!chefPose) chefPose = { name: 'salsa', t: Tg - 17.5 };
       CAST.chef(ctx, chefX, CHEF_Y, CHEF_H, chefPose, { line: 'hero' });
 
-      // 7. the fifteen t-shirts: flight then catch -------------------------------------------------
+      // 7. the fifteen t-shirts, on top of everything including the chef (they're leaving his hand
+      //    or landing on a catcher, so being frontmost here is correct): flight then catch ----------
       for (const s of G.seats) {
         const ti = throwTime(s.throwI), tc = catchTime(s.throwI);
         if (t < ti || t > tc + 6 / 24) continue; // gone 6 frames after landing (trail fade window)
         const u = clamp01((t - ti) / FLIGHT);
         // release point: approximately the chef's throwing hand at the moment of release.
         const x0 = lerp(CHEF_X0, CHEF_X1, L.ease.inOutSine(ti / info.dur)) + CHEF_H * 0.06;
-        const y0 = CHEF_Y - CHEF_H * 0.6;
+        const y0 = CHEF_Y - CHEF_H * 0.62;
         const x1 = s.x;
-        const y1th = (s.table === 'A' ? FLOOR_A - TABLE_A_H * 0.6 : FLOOR_B - TABLE_B_H * 0.6);
+        const y1th = (s.table === 'A' ? FLOOR_A - TABLE_A_H * 0.62 : FLOOR_B - TABLE_B_H * 0.62);
         if (u < 1) {
-          const trailAlpha = 1;
-          drawTrail(ctx, L, P, x0, y0, x1, y1th, APEX, u, trailAlpha);
+          drawTrail(ctx, L, P, x0, y0, x1, y1th, APEX, u, 1);
           const px = lerp(x0, x1, u), py = lerp(y0, y1th, u) - APEX * 4 * u * (1 - u);
           const rot = u * Math.PI * 4 + ((sd('rot', s.throwI) % 1000) / 1000) * Math.PI * 2;
           const flap = (Tg * 6) % 1;
-          CAST.tshirt(ctx, px, py, 130, { design: s.design, rot, flap, view: (Math.floor(u * 8) % 2) ? 'back' : 'front' });
+          CAST.tshirt(ctx, px, py, 170, { design: s.design, rot, flap, view: (Math.floor(u * 8) % 2) ? 'back' : 'front' });
         } else {
           const fadeAlpha = clamp01(1 - (t - tc) / (6 / 24));
           if (fadeAlpha > 0.01) drawTrail(ctx, L, P, x0, y0, x1, y1th, APEX, 1, fadeAlpha);
         }
-      }
-
-      // 8. table B's structure, then its 7 seats — drawn last so it reads as the closest row --------
-      cachedLayer(ctx, L, 'front', TABLE_B_X - TABLE_B_W / 2 - 40, TABLE_B_X + TABLE_B_W / 2 + 40, Tg, (g, b) => {
-        PROPS.table(g, TABLE_B_X, TABLE_B_Y, TABLE_B_W, { depth: 34, legs: TABLE_B_LEGS, bench: 'front', seed: sd('tblB'), boil: b });
-      });
-      for (const s of G.seats) {
-        if (s.table !== 'B') continue;
-        drawSeat(s, FLOOR_B, TABLE_B_H);
       }
 
       ctx.restore();

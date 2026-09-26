@@ -29,11 +29,32 @@
   const RAISE_START = 2.0, RAISE_DUR = 0.5; // T 27.0-27.5, then holds
   const FLASH_START = 2.0, FLASH_DUR = 0.4;
 
-  // --- the foam "9" (storyboard G3) --------------------------------------------------------------
+  // --- the foam "9" (storyboard G3: centred 620,520, 620 px tall) ---------------------------------
+  // An unmistakable numeral: a round CLOSED loop (width 0.85 x height) filling the top ~55% of the
+  // 620 px box, and a tail that leaves the loop at its rightmost point and curves down and
+  // slightly left to the baseline, staying outside the loop the whole way (never crossing back
+  // above or through it). Director-reviewed polyline (script coordinates, y down):
+  //   loop (ellipse, cx 620 cy 380, rx 145 ry 170), sampled every 30 deg from the top, CCW:
+  //     (620,220) (547,243) (494,305) (475,380) (494,455) (547,517) (620,550)
+  //     (693,517) (746,455) (765,380) (746,305) (693,243) -> closes back to (620,220)
+  //   tail (cubic bezier from the loop's right point to the baseline):
+  //     P0 (765,380) C1 (770,530) C2 (700,750) P1 (595,830)
+  //     sampled: (765,380) (759,477) (738,579) (702,677) (653,759) (595,830)
   const NINE_CX = 620, NINE_CY = 520, NINE_STROKE = 70;
+  const LOOP_CX = 620, LOOP_CY = 380, LOOP_RX = 145, LOOP_RY = 170;
+  const TAIL_P0 = [LOOP_CX + LOOP_RX, LOOP_CY], TAIL_C1 = [770, 530], TAIL_C2 = [700, 750], TAIL_P1 = [595, 830];
   function bez(p0, c1, c2, p1, u) {
     const mu = 1 - u, a = mu * mu * mu, b = 3 * mu * mu * u, c = 3 * mu * u * u, d = u * u * u;
     return [a * p0[0] + b * c1[0] + c * c2[0] + d * p1[0], a * p0[1] + b * c1[1] + c * c2[1] + d * p1[1]];
+  }
+  function arcLen(pts) {
+    let total = 0;
+    const S = [0];
+    for (let i = 1; i < pts.length; i++) {
+      total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+      S.push(total);
+    }
+    return { S, total };
   }
   let GEO = null;
   function geo() {
@@ -44,41 +65,44 @@
     for (let i = 0; i < TEAM.length; i++) {
       crowd.push({ spec: TEAM[i], x: TEAM_X0 + (i * (TEAM_X1 - TEAM_X0)) / (TEAM.length - 1), y: TEAM_Y });
     }
-    // the numeral 9: a loop (bowl) traced counter-clockwise from the top, then a tail down.
-    const bowlCx = NINE_CX + 14, bowlCy = NINE_CY - 128, R = 172;
-    const startDeg = -98, sweepDeg = 332;
-    const nLoop = 100;
-    const pts = [];
+    // the loop: a closed ellipse traced from the top, counter-clockwise (decreasing angle).
+    const nLoop = 96;
+    const loop = [];
     for (let i = 0; i <= nLoop; i++) {
-      const u = i / nLoop;
-      const a = (startDeg - u * sweepDeg) * DEG;
-      pts.push([bowlCx + Math.cos(a) * R, bowlCy + Math.sin(a) * R]);
+      const a = (-90 - (i / nLoop) * 360) * DEG;
+      loop.push([LOOP_CX + Math.cos(a) * LOOP_RX, LOOP_CY + Math.sin(a) * LOOP_RY]);
     }
-    const p0 = pts[pts.length - 1];
-    const tailEnd = [NINE_CX - 18, NINE_CY + 308];
-    const c1 = [p0[0] + 34, p0[1] + 130];
-    const c2 = [tailEnd[0] + 54, tailEnd[1] - 150];
-    const nTail = 56;
-    for (let i = 1; i <= nTail; i++) pts.push(bez(p0, c1, c2, tailEnd, i / nTail));
-    // cumulative arc length, for placing sparkles/bubbles at a given reveal fraction.
-    let total = 0;
-    const S = [0];
-    for (let i = 1; i < pts.length; i++) {
-      total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-      S.push(total);
-    }
-    GEO = { crowd, ninePts: pts, nineS: S, nineLen: total, bbox: { x: NINE_CX - 260, y: NINE_CY - 310, w: 520, h: 620 } };
+    // the tail: a separate stroke leaving the loop's right side, curving down and left.
+    const nTail = 48;
+    const tail = [];
+    for (let i = 0; i <= nTail; i++) tail.push(bez(TAIL_P0, TAIL_C1, TAIL_C2, TAIL_P1, i / nTail));
+    const loopArc = arcLen(loop), tailArc = arcLen(tail);
+    // sample points across both, for the completion sparkles.
+    const allPts = loop.concat(tail.slice(1));
+    GEO = {
+      crowd, loop, tail, loopArc, tailArc, allPts,
+      loopFrac: loopArc.total / (loopArc.total + tailArc.total),
+      bbox: { x: NINE_CX - 260, y: NINE_CY - 310, w: 520, h: 620 },
+    };
     return GEO;
   }
   function clamp01(v) {
     return v < 0 ? 0 : v > 1 ? 1 : v;
   }
   function pointAtFrac(G, u) {
-    const target = G.nineLen * clamp01(u);
-    const S = G.nineS, pts = G.ninePts;
+    const pts = G.allPts;
+    const target = (G.loopArc.total + G.tailArc.total) * clamp01(u);
+    // allPts is loop (arc-length G.loopArc) followed by tail (continuing past loopArc.total)
+    if (target <= G.loopArc.total) {
+      const S = G.loopArc.S;
+      let i = 1;
+      while (i < S.length - 1 && S[i] < target) i++;
+      return pts[i];
+    }
+    const S = G.tailArc.S, rel = target - G.loopArc.total;
     let i = 1;
-    while (i < S.length - 1 && S[i] < target) i++;
-    return pts[i];
+    while (i < S.length - 1 && S[i] < rel) i++;
+    return pts[G.loop.length - 1 + i];
   }
 
   FILM.scene({
@@ -102,16 +126,28 @@
         CAST.person(ctx, c.spec, c.x, c.y, TEAM_H, { name: 'cheer', t: t * ph + i }, { outfit: 'jersey' });
       }
 
-      // 3. the foam "9", drawn stroke by stroke, loop first then the tail ------------------------
+      // 3. the foam "9": the closed loop first (CCW from the top), then the tail --------------------
       const nineU = L.clamp((t - SPIN_START) / SPIN_DUR);
       if (nineU > 0) {
         const seed = L.hash(ID, 'nine');
-        const iEnd = Math.max(2, Math.floor(nineU * (G.ninePts.length - 1)) + 1);
-        const shown = G.ninePts.slice(0, iEnd + 1);
-        // soft under-shadow for volume, then the foam body, a lighter core, then a gloss edge
-        L.inkPath(ctx, shown, { closed: false, width: NINE_STROKE, color: P.foamShade, alpha: 0.55, seed: seed + 1, taper: [26, 18], smooth: true, draw: 1, wobble: 2.4, tremble: 0.6 });
-        L.inkPath(ctx, shown, { closed: false, width: NINE_STROKE * 0.92, color: P.foam, seed, taper: [22, 16], smooth: true, draw: 1, wobble: 2.2, tremble: 0.55, double: { width: 0.22, alpha: 0.3, seed: seed + 2 } });
-        L.inkPath(ctx, shown, { closed: false, width: NINE_STROKE * 0.34, color: L.rgba(P.gloss, 0.55), seed: seed + 3, taper: [30, 60], smooth: true, draw: 1, offset: 0, wobble: 1.6 });
+        const loopU = L.clamp(nineU / G.loopFrac);
+        const tailU = L.clamp((nineU - G.loopFrac) / (1 - G.loopFrac));
+        const strokes = [
+          { pts: G.loop, arc: G.loopArc, u: loopU, closed: true, seedBase: seed },
+          { pts: G.tail, arc: G.tailArc, u: tailU, closed: false, seedBase: seed + 100 },
+        ];
+        for (const s of strokes) {
+          if (s.u <= 0) continue;
+          const draw = s.u, pts = s.pts;
+          // faint dark edge so the glyph separates from the busy crowd behind it
+          L.inkPath(ctx, pts, { closed: s.closed, width: NINE_STROKE + 12, color: P.outline, alpha: 0.28, seed: s.seedBase + 1, taper: [16, 16], smooth: true, draw, wobble: 1.6, tremble: 0.4 });
+          // a thin gold/goldDeep edge peeking out from under the foam
+          L.inkPath(ctx, pts, { closed: s.closed, width: NINE_STROKE + 6, color: P.goldDeep, seed: s.seedBase + 2, taper: [14, 14], smooth: true, draw, wobble: 1.8, tremble: 0.45 });
+          // the uniform foam body
+          L.inkPath(ctx, pts, { closed: s.closed, width: NINE_STROKE, color: P.foam, seed: s.seedBase, taper: [12, 12], smooth: true, draw, wobble: 1.8, tremble: 0.45, double: { width: 0.18, alpha: 0.25, seed: s.seedBase + 3 } });
+          // a lighter core down the middle for volume
+          L.inkPath(ctx, pts, { closed: s.closed, width: NINE_STROKE * 0.36, color: L.rgba(P.gloss, 0.6), seed: s.seedBase + 4, taper: [20, 40], smooth: true, draw, wobble: 1.2 });
+        }
         // gold bubbles, more of them as more foam has been laid down
         PROPS.bubbles(ctx, L.hash(ID, 'bub'), Math.max(0, t - SPIN_START), G.bbox, { count: Math.round(26 * nineU), speed: 0.9, size: [5, 16] });
       }

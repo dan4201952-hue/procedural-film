@@ -22,9 +22,10 @@
     return { x: 960, y: 560 - yFrac * h, h };
   })();
 
-  // The lockup's resting place: centred (960, 485), a touch under the storyboard's 900 px tall and
-  // 500 y so "Релиз FESB 9" clears the safe area (y <= 970) once it unrolls below it.
-  const LOCKUP_CX = 960, LOCKUP_CY = 485, LOCKUP_S = 0.92;
+  // The lockup's resting place: centred (960, 455), smaller than the storyboard's 900 px tall and
+  // 500 y so "2026" clears the safe area and the "Релиз FESB 9" ribbon below it (director's review:
+  // the ribbon was covering the year).
+  const LOCKUP_CX = 960, LOCKUP_CY = 455, LOCKUP_S = 0.88;
   // FILM.props.lockup returns the mug's own base centre and height for that placement; the camera
   // that opens on G4 and settles on the resting placement is solved from that anchor, so the two
   // mugs coincide exactly at T 30.5 without hand-copying either shot's numbers.
