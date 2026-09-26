@@ -15,6 +15,12 @@
   const DEG = Math.PI / 180;
 
   const CHEF_X = 1180, CHEF_Y = 1010, CHEF_H = 860;
+  // The 'spin' pose's raised arm carries the mug well above head height; at the full G3 height
+  // (860) that pushes it off the top of the frame, so the windup and the two spins are drawn at a
+  // smaller height (verified against the frame with tools/verify) and only grow to the G3 hero
+  // height while the mug comes down into its raised, on-camera position (RAISE_START on).
+  const CHEF_H_SPIN = 600;
+  const TEAM_Y = 660, TEAM_H = 380, TEAM_X0 = 250, TEAM_X1 = 1670;
 
   // Timing (shot-local seconds; T = 25.0 + t).
   const WINDUP_END = 0.5; // T 25.5
@@ -34,10 +40,9 @@
     if (GEO) return GEO;
     const TEAM = FILM.cast.TEAM;
     // background row, small, spread along the back wall behind the chef.
-    const TEAM_Y = 660, TEAM_H = 380, X0 = 250, X1 = 1670;
     const crowd = [];
     for (let i = 0; i < TEAM.length; i++) {
-      crowd.push({ spec: TEAM[i], x: X0 + (i * (X1 - X0)) / (TEAM.length - 1), y: TEAM_Y });
+      crowd.push({ spec: TEAM[i], x: TEAM_X0 + (i * (TEAM_X1 - TEAM_X0)) / (TEAM.length - 1), y: TEAM_Y });
     }
     // the numeral 9: a loop (bowl) traced counter-clockwise from the top, then a tail down.
     const bowlCx = NINE_CX + 14, bowlCy = NINE_CY - 128, R = 172;
@@ -65,15 +70,15 @@
     GEO = { crowd, ninePts: pts, nineS: S, nineLen: total, bbox: { x: NINE_CX - 260, y: NINE_CY - 310, w: 520, h: 620 } };
     return GEO;
   }
+  function clamp01(v) {
+    return v < 0 ? 0 : v > 1 ? 1 : v;
+  }
   function pointAtFrac(G, u) {
-    const target = G.nineLen * L_clamp(u);
+    const target = G.nineLen * clamp01(u);
     const S = G.nineS, pts = G.ninePts;
     let i = 1;
     while (i < S.length - 1 && S[i] < target) i++;
     return pts[i];
-  }
-  function L_clamp(v) {
-    return v < 0 ? 0 : v > 1 ? 1 : v;
   }
 
   FILM.scene({
@@ -94,7 +99,7 @@
       for (let i = 0; i < G.crowd.length; i++) {
         const c = G.crowd[i];
         const ph = 0.35 + 0.65 * ((L.hash(ID, 'cheer', i) & 255) / 255);
-        CAST.person(ctx, c.spec, c.x, c.y, 380, { name: 'cheer', t: t * ph + i }, { outfit: 'jersey' });
+        CAST.person(ctx, c.spec, c.x, c.y, TEAM_H, { name: 'cheer', t: t * ph + i }, { outfit: 'jersey' });
       }
 
       // 3. the foam "9", drawn stroke by stroke, loop first then the tail ------------------------
@@ -113,7 +118,7 @@
 
       // 4. the chef, holding the hero mug throughout ----------------------------------------------
       const spinRaw = L.clamp((t - SPIN_START) / SPIN_DUR) * 2;
-      let pose, tilt = 0, slosh = 0;
+      let pose, tilt = 0, slosh = 0, chefH = CHEF_H_SPIN;
       if (t < WINDUP_END) {
         const k = 0.12 * Math.sin(Math.PI * (t / WINDUP_END));
         pose = { name: 'spin', k };
@@ -125,8 +130,9 @@
       } else {
         const k = L.clamp((t - RAISE_START) / RAISE_DUR);
         pose = { name: 'raiseMug', k };
+        chefH = L.lerp(CHEF_H_SPIN, CHEF_H, L.ease.inOutCubic(k));
       }
-      CAST.chef(ctx, CHEF_X, CHEF_Y, CHEF_H, pose, {
+      CAST.chef(ctx, CHEF_X, CHEF_Y, chefH, pose, {
         mug: { fill: 0.85, foam: 1.05, logo: true, bubbles: true, tilt, slosh, t },
         bandana: true,
       });
