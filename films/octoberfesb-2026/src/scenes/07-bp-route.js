@@ -303,10 +303,9 @@
       }
       secLine(ctx, [SLEEVE_L, HAND_L], { width: 5 });
       secLine(ctx, [SLEEVE_R, HAND_R], { width: 5 });
-      secLine(ctx, [[SLEEVE_L[0], SLEEVE_L[1]], [SLEEVE_L[0] - 14, SLEEVE_L[1] + 22]], { width: 5 });
-      secLine(ctx, [[SLEEVE_R[0], SLEEVE_R[1]], [SLEEVE_R[0] + 14, SLEEVE_R[1] + 22]], { width: 5 });
       primaryCircle(ctx, SLEEVE_L[0], SLEEVE_L[1], SLEEVE_RAD, 6);
       primaryCircle(ctx, SLEEVE_R[0], SLEEVE_R[1], SLEEVE_RAD, 6);
+      primaryPoly(ctx, NECK, 5);
       primaryCircle(ctx, CX, HEAD_CY, HEAD_R, 9);
       braidCrown(ctx, CX, HEAD_CY, HEAD_R);
       drawShoe(ctx, SHOE_L[0], SHOE_L[1], true);
