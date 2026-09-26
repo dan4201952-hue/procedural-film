@@ -16,7 +16,7 @@ FILM.scene({
     };
     if (t < 0.5) {
       for (let i = 0; i < 15; i++) {
-        const x = 90 + i * 124, y = 470;
+        const x = 140 + i * 117, y = 470;
         shadow(x, y, 50);
         C.person(ctx, T[i], x, y, 360, { name: 'stand' }, {});
         label(T[i].id, x, 500);

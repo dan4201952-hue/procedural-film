@@ -114,36 +114,74 @@
     return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   }
 
-  /** fallback for FILM.props.shape (same options) until props.js provides it */
-  function shapeLocal(ctx, pts, o) {
-    const LN = lineSet();
+  /**
+   * shapeFig(ctx, pts, o): the figures' twin of FILM.props.shape, with the same options and look
+   * (smooth fill, cel tone { color, side, frac } or { color, pts }, gloss [x, y, len, angle, w],
+   * outline through lib.inkPath with FILM.props.LINE). Two differences keep a hall of people fast:
+   * the ink resample step grows with the outline length (2.5 to 5 px), and the cel-tone pass fills
+   * only the shape's own box.
+   */
+  function shapeFig(ctx, pts, o) {
     const draw = o.draw == null ? 1 : o.draw;
+    if (draw <= 0 || !pts || pts.length < 3) return;
+    const LN = lineSet();
+    const smooth = o.smooth !== false;
     if (draw >= 1 && o.fill) {
       ctx.beginPath();
-      crTrace(ctx, pts, true);
+      if (smooth) crTrace(ctx, pts, true);
+      else L.tracePath(ctx, pts, true);
       ctx.fillStyle = o.fill;
       ctx.fill();
-      if (o.shade) {
-        const b = bboxOf(pts), f = o.shade.frac != null ? o.shade.frac : 0.25;
+      let sh = o.shade;
+      if (sh && !sh.pts) {
+        const b0 = bboxOf(pts);
+        if (b0.w < 12 && b0.h < 12) sh = null;
+      }
+      if (sh) {
         ctx.save();
         ctx.clip();
         ctx.beginPath();
-        ctx.rect(b.x - b.w - 10, b.y - b.h - 10, b.w * 3 + 20, b.h * 3 + 20);
-        const moved = pts.map((q) => [q[0] - f * b.w, q[1] - f * b.h * 0.3]);
-        crTrace(ctx, moved, true);
-        ctx.fillStyle = o.shade.color;
-        ctx.fill('evenodd');
+        if (sh.pts) {
+          crTrace(ctx, sh.pts, true);
+          ctx.fillStyle = sh.color || SHADE_SKIN;
+          ctx.fill();
+        } else {
+          const b = bboxOf(pts), f = sh.frac != null ? sh.frac : 0.25, side = sh.side || 'right';
+          let dx = -f * b.w, dy = -f * b.h * 0.3;
+          if (side === 'left') dx = f * b.w;
+          else if (side === 'bottom') (dx = -f * b.w * 0.15), (dy = -f * b.h);
+          else if (side === 'top') (dx = 0), (dy = f * b.h);
+          ctx.rect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
+          const moved = new Array(pts.length);
+          for (let i = 0; i < pts.length; i++) moved[i] = [pts[i][0] + dx, pts[i][1] + dy];
+          if (smooth) crTrace(ctx, moved, true);
+          else L.tracePath(ctx, moved, true);
+          ctx.fillStyle = sh.color || SHADE_SKIN;
+          ctx.fill('evenodd');
+        }
         ctx.restore();
       }
+      if (o.gloss) for (const g of o.gloss) glossLine(ctx, [g[0], g[1]], [g[0] + cos(g[3] || 0) * (g[2] || 0), g[1] + sin(g[3] || 0) * (g[2] || 0)], g[4] || Math.max(2, (g[2] || 0) * 0.22), 0.95);
     }
     if (o.outline !== false) {
-      L.inkPath(ctx, pts, { closed: true, width: o.width || 5, color: o.color || P.outline, seed: o.seed || 1, draw, wobble: LN.wobble, tremble: LN.tremble, rough: LN.rough, boilAmp: LN.boilAmp, widthJitter: LN.widthJitter, taper: LN.taper });
+      let per = 0;
+      for (let i = 0, n = pts.length; i < n; i++) {
+        const a = pts[i], b = pts[(i + 1) % n];
+        per += Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]);
+      }
+      L.inkPath(ctx, pts, {
+        closed: true, width: o.width || 5, color: o.color || P.outline, alpha: o.lineAlpha, seed: o.seed || 1, draw, boil: o.boil, smooth,
+        wobble: LN.wobble, tremble: LN.tremble, rough: LN.rough, boilAmp: LN.boilAmp, widthJitter: LN.widthJitter, taper: LN.taper,
+        step: clamp(per / 40, 4, 6), swell: 0.08, minWidth: 0.3,
+      });
     }
   }
-  function SH(ctx, pts, o) {
+  const SH = shapeFig;
+  /** props-owned objects use the house primitive itself */
+  function SHP(ctx, pts, o) {
     const f = PR().shape;
     if (typeof f === 'function') f(ctx, pts, o);
-    else shapeLocal(ctx, pts, o);
+    else shapeFig(ctx, pts, o);
   }
   /** an open detail stroke with the film's line settings */
   function inkLine(ctx, pts, o) {
@@ -226,6 +264,49 @@
     }
     return pts;
   }
+  /** a bent tube a -> b -> c (radii ra, rb, rc): one outline for a whole limb, round joint outside */
+  function chain(a, b, c, ra, rb, rc) {
+    let d1 = [b[0] - a[0], b[1] - a[1]], d2 = [c[0] - b[0], c[1] - b[1]];
+    const l1 = hypot(d1[0], d1[1]) || 1e-6, l2 = hypot(d2[0], d2[1]) || 1e-6;
+    d1 = [d1[0] / l1, d1[1] / l1];
+    d2 = [d2[0] / l2, d2[1] / l2];
+    const n1 = [-d1[1], d1[0]], n2 = [-d2[1], d2[0]];
+    let nm = [n1[0] + n2[0], n1[1] + n2[1]];
+    const lm = hypot(nm[0], nm[1]) || 1e-6;
+    nm = [nm[0] / lm, nm[1] / lm];
+    const ch = Math.max(0.55, nm[0] * n1[0] + nm[1] * n1[1]);
+    const bend = n1[0] * d2[0] + n1[1] * d2[1];
+    const side = (sg) => {
+      const pts = [[a[0] + sg * n1[0] * ra, a[1] + sg * n1[1] * ra]];
+      const inner = Math.abs(bend) < 0.08 || (bend > 0) === (sg > 0);
+      if (inner) pts.push([b[0] + sg * nm[0] * (rb / ch), b[1] + sg * nm[1] * (rb / ch)]);
+      else {
+        let a1 = atan2(sg * n1[1], sg * n1[0]), a2 = atan2(sg * n2[1], sg * n2[0]);
+        a2 = a1 + wrapPi(a2 - a1);
+        for (let k = 0; k <= 2; k++) {
+          const t = lerp(a1, a2, k / 2);
+          pts.push([b[0] + cos(t) * rb, b[1] + sin(t) * rb]);
+        }
+      }
+      pts.push([c[0] + sg * n2[0] * rc, c[1] + sg * n2[1] * rc]);
+      return pts;
+    };
+    const L1 = side(1), R1 = side(-1).reverse();
+    const out = L1;
+    const ac = atan2(d2[1], d2[0]);
+    for (let i = 1; i < 5; i++) {
+      const t = ac + PI / 2 - (i / 5) * PI;
+      out.push([c[0] + cos(t) * rc, c[1] + sin(t) * rc]);
+    }
+    for (const q of R1) out.push(q);
+    const aa = atan2(d1[1], d1[0]);
+    for (let i = 1; i < 5; i++) {
+      const t = aa - PI / 2 - (i / 5) * PI;
+      out.push([a[0] + cos(t) * ra, a[1] + sin(t) * ra]);
+    }
+    return out;
+  }
+  const bendOf = (a, b, c) => Math.abs(wrapPi(atan2(c[1] - b[1], c[0] - b[0]) - atan2(b[1] - a[1], b[0] - a[0])));
   /** two-bone IK: from a toward t with bone lengths la, lb; the middle joint bends toward pref */
   function ik2(a, t, la, lb, pref) {
     const dx = t[0] - a[0], dy = t[1] - a[1];
@@ -281,7 +362,24 @@
       if (color !== false) o2.shade = { color: color || SHADE, side: 'right', frac };
       SH(ctx, q, Object.assign(o2, extra));
     };
-    R.line = (pts, k, extra) => inkLine(ctx, R.M(pts), Object.assign({ width: R.dw, color: P.outlineSoft, seed: R.seed + k, draw: R.draw }, extra));
+    /** a whole two-bone limb as one outline (two capsules when it folds tight) */
+    R.limb2 = (a, b, c, ra, rb, rc, fill, k, color) => {
+      if (bendOf(a, b, c) > 2.1) {
+        R.limb(b, c, rb, rc, fill, k, color);
+        R.limb(a, b, ra, rb, fill, k + 1, color);
+        return;
+      }
+      const q = R.M(chain(a, b, c, ra, rb, rc));
+      const bb = bboxOf(q);
+      const frac = clamp(((ra + rc) * 0.34 * U) / Math.max(1, bb.w), 0.05, 0.42);
+      SH(ctx, q, { fill, width: R.ow, seed: R.seed + k, draw: R.draw, shade: color === false ? null : { color: color || SHADE, side: 'right', frac } });
+    };
+    R.line = (pts, k, extra) => {
+      const q = R.M(pts);
+      const a = q[0], b = q[q.length - 1];
+      if (Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]) < 5) return;
+      inkLine(ctx, q, Object.assign({ width: R.dw, color: P.outlineSoft, seed: R.seed + k, draw: R.draw }, extra));
+    };
     R.fill = (pts, color) => {
       if (R.draw < 1) return;
       ctx.beginPath();
@@ -498,7 +596,6 @@
     const ex = side ? 1.6 : 1;
     const pts = [[-1, 0.62], [-1.08, 0.05], [-0.86, -0.55], [-0.35, -0.86], [0.35, -0.86], [0.86, -0.55], [1.08, 0.05], [1, 0.62], [0, 0.72]].map(([u, v]) => [cx + u * hw * ex, cy + v * hh]);
     R.shape(pts, color, k, { shade: { color: SHADE, side: 'right', frac: 0.16 } });
-    R.line([[cx - hw * ex * 0.92, cy + hh * 0.36], [cx + hw * ex * 0.92, cy + hh * 0.36]], k + 1, { color: P.outline, alpha: 0.5 });
     R.gloss([cx - hw * 0.45, cy - hh * 0.5], [cx - hw * 0.1, cy - hh * 0.66], hh * 0.22, 0.75);
   }
 
@@ -511,16 +608,17 @@
     const nx = -dy * ts, ny = dx * ts;
     const H = (u, v) => [wr[0] + dx * u * hs + nx * v * hs, wr[1] + dy * u * hs + ny * v * hs];
     const HS = (list) => list.map((q) => H(q[0], q[1]));
+    const fine = hs * R.U >= 22;
     if (kind === 'fist' || kind === 'grip' || kind === 'thumb' || kind === 'point') {
       R.shape(HS([[-0.05, -0.3], [0.3, -0.42], [0.64, -0.38], [0.84, -0.18], [0.86, 0.1], [0.72, 0.34], [0.42, 0.42], [0.1, 0.36], [-0.05, 0.3]]), skin, k, { shade: { color: SHADE_SKIN, side: 'right', frac: 0.16 } });
-      R.line(HS([[0.62, -0.26], [0.7, 0], [0.62, 0.24]]), k + 1, { alpha: 0.8 });
+      if (fine) R.line(HS([[0.62, -0.26], [0.7, 0], [0.62, 0.24]]), k + 1, { alpha: 0.8 });
       if (kind === 'thumb') R.shape(cap(H(0.35, 0.3), H(0.1, 0.95), hs * 0.16, hs * 0.14, 5), skin, k + 2);
       else if (kind === 'point') R.shape(cap(H(0.6, -0.08), H(1.3, -0.08), hs * 0.15, hs * 0.13, 5), skin, k + 2);
-      else R.line(HS([[0.22, 0.36], [0.46, 0.22], [0.6, 0.06]]), k + 2, { alpha: 0.85 });
+      else if (fine) R.line(HS([[0.22, 0.36], [0.46, 0.22], [0.6, 0.06]]), k + 2, { alpha: 0.85 });
     } else {
       R.shape(HS([[-0.05, -0.3], [0.42, -0.36], [0.82, -0.32], [1.0, -0.16], [1.03, 0.05], [0.9, 0.24], [0.62, 0.3], [0.54, 0.38], [0.66, 0.58], [0.52, 0.68], [0.32, 0.52], [0.1, 0.36], [-0.05, 0.3]]), skin, k, { shade: { color: SHADE_SKIN, side: 'right', frac: 0.14 } });
-      R.line(HS([[0.7, -0.12], [0.96, -0.1]]), k + 1, { alpha: 0.75 });
-      R.line(HS([[0.7, 0.08], [0.95, 0.1]]), k + 2, { alpha: 0.75 });
+      if (fine) R.line(HS([[0.7, -0.12], [0.96, -0.1]]), k + 1, { alpha: 0.75 });
+      if (fine) R.line(HS([[0.7, 0.08], [0.95, 0.1]]), k + 2, { alpha: 0.75 });
     }
     return H(0.45, 0);
   }
@@ -878,12 +976,11 @@
       R.limb(l2(hip, knee, 0.75), ank, B.shinR * 1.12, B.shinR * 0.8, st.skin, k + 3, SHADE_SKIN);
       const top = l2(knee, ank, 0.3);
       R.limb(top, l2(knee, ank, 1.02), B.shinR * 1.1, B.shinR * 0.86, COL.sock, k + 4, SHADE);
-      for (const f of [0.36, 0.42]) {
+      for (const f of [0.37]) {
         const c = l2(knee, ank, f), an = atan2(ank[1] - knee[1], ank[0] - knee[0]);
         const nx = -sin(an) * B.shinR * 1.02, ny = cos(an) * B.shinR * 1.02;
         R.line([[c[0] - nx, c[1] - ny], [c[0] + nx, c[1] + ny]], k + 5 + f * 10, { color: COL.sockBand, width: R.dw * 1.3 });
       }
-      R.line([l2(knee, ank, 0.5), l2(knee, ank, 0.9)].map((q) => [q[0] + s * B.shinR * 0.3, q[1]]), k + 6, { alpha: 0.6 });
       R.limb(hip, l2(hip, knee, 0.64), B.thighR, B.thighR * 0.96, P.lederhosen, k + 7, SHADE);
       const e = l2(hip, knee, 0.64), d = l2(hip, knee, 0.5);
       const a = atan2(e[1] - hip[1], e[0] - hip[0]);
@@ -893,8 +990,7 @@
       R.limb(knee, ank, B.shinR * 1.05, B.shinR * 0.78, st.skin, k + 3, SHADE_SKIN);
       R.limb(l2(knee, ank, 0.62), l2(knee, ank, 1.02), B.shinR * 0.94, B.shinR * 0.82, COL.sock, k + 4, SHADE);
     } else {
-      R.limb(knee, ank, B.shinR * 1.1, B.shinR * 1.0, st.legColor, k + 3, SHADE);
-      R.limb(hip, knee, B.thighR, B.shinR * 1.14, st.legColor, k + 4, SHADE);
+      R.limb2(hip, knee, ank, B.thighR, B.shinR * 1.12, B.shinR * 1.0, st.legColor, k + 3, SHADE);
     }
   }
 
@@ -1079,13 +1175,15 @@
     const sleeve = st.sleeve;
     const sc = st.sleeveColor;
     if (sleeve === 'long') {
-      R.limb(el, wr, B.foreR * 1.08, B.foreR * 0.92, sc, k, SHADE);
-      R.limb(l2(el, wr, 0.84), l2(el, wr, 1.02), B.foreR * 0.98, B.foreR * 0.94, st.cuffColor || sc, k + 1, false);
+      R.limb2(sh, el, wr, B.armR, B.foreR * 1.1, B.foreR * 0.92, sc, k, SHADE);
+      const fa = atan2(wr[1] - el[1], wr[0] - el[0]), c = l2(el, wr, 0.84), nx = -sin(fa) * B.foreR * 0.95, ny = cos(fa) * B.foreR * 0.95;
+      R.line([[c[0] - nx, c[1] - ny], [c[0] + nx, c[1] + ny]], k + 1, { color: P.outline, alpha: 0.5 });
+    } else if (sleeve === 'short' || sleeve === 'puff') {
+      R.limb2(sh, el, wr, B.armR * 0.9, B.foreR * 1.02, B.foreR * 0.8, skin, k, SHADE_SKIN);
     } else {
       R.limb(el, wr, B.foreR, B.foreR * 0.8, skin, k, SHADE_SKIN);
     }
     if (sleeve === 'short' || sleeve === 'puff') {
-      R.limb(sh, el, B.armR * 0.9, B.foreR * 1.02, skin, k + 2, SHADE_SKIN);
       if (sleeve === 'puff') {
         const c = l2(sh, el, 0.2);
         R.shaded(ell(c[0], c[1], B.armR * 1.75, B.armR * 1.5, 16, atan2(el[1] - sh[1], el[0] - sh[0])), P.shirtWhite, k + 3, SHADE, 0.2);
@@ -1101,8 +1199,6 @@
       R.limb(el, l2(el, wr, 0.22), B.foreR * 1.34, B.foreR * 1.26, sc, k + 3, SHADE);
       const a = l2(el, wr, 0.1), ang = atan2(wr[1] - el[1], wr[0] - el[0]), n = [-sin(ang) * B.foreR * 1.25, cos(ang) * B.foreR * 1.25];
       R.line([[a[0] - n[0], a[1] - n[1]], [a[0] + n[0], a[1] + n[1]]], k + 4, { alpha: 0.7 });
-    } else {
-      R.limb(sh, el, B.armR, B.foreR * 1.12, sc, k + 2, SHADE);
     }
     const hk = st.hands[s < 0 ? 0 : 1];
     drawHand(R, B, wr, J['ha' + S], s, hk, skin, k + 6, st.back);
@@ -1143,7 +1239,6 @@
       R.shaded(HM(beard, true), P.beard, 330, SHADE_DEEP, 0.16);
       R.line(HM([[0.22, 0.52], [0.3, 0.62]], true), 331, { color: P.beardGrey, alpha: 0.9 });
       R.line(HM([[-0.12, 0.6], [-0.06, 0.7]], true), 332, { color: P.beardGrey, alpha: 0.9 });
-      R.line(HM([[0.4, 0.3], [0.44, 0.42]], true), 333, { color: P.beardGrey, alpha: 0.8 });
     } else if (st.spec && st.spec.beard) {
       const full = st.spec.beard === 'full';
       const beard = full
@@ -1321,7 +1416,8 @@
     const lk = PR().lockup;
     return {
       q,
-      c: cacheGet('octo|' + q.toFixed(2) + '|' + S, () => {
+      // the lockup's line boils with lib.T, so the boil drawing is part of the key
+      c: cacheGet('octo|' + q.toFixed(2) + '|' + S + '|' + L.boil(L.T), () => {
         const cv = newCanvas(q * 1.3 * S, q * 1.1 * S);
         const g = cv.getContext('2d');
         g.scale(S, S);
@@ -1427,9 +1523,9 @@
     const lw = o.width || Math.max(1.5, (5 * h) / 300);
     const body = [[x - w / 2, y - h], [x + w / 2, y - h], [x + w / 2, y], [x - w / 2, y]];
     const hdl = [[x + f * w * 0.45, y - h * 0.85], [x + f * w * 0.9, y - h * 0.8], [x + f * w * 0.92, y - h * 0.25], [x + f * w * 0.45, y - h * 0.2]];
-    shapeLocal(ctx, hdl, { fill: P.glass, width: lw, seed: 3 });
-    shapeLocal(ctx, body, { fill: P.beer, width: lw, seed: 4 });
-    shapeLocal(ctx, ell(x, y - h, w * 0.55, h * 0.12, 12), { fill: P.foam, width: lw, seed: 5 });
+    shapeFig(ctx, hdl, { fill: P.glass, width: lw, seed: 3 });
+    shapeFig(ctx, body, { fill: P.beer, width: lw, seed: 4 });
+    shapeFig(ctx, ell(x, y - h, w * 0.55, h * 0.12, 12), { fill: P.foam, width: lw, seed: 5 });
     return { handle: [x + f * 0.58 * h, y - 0.52 * h], rim: [x, y - h, w], logo: [x, y - h / 2, h * 0.23] };
   }
   function MUG(ctx, x, y, h, o) {
@@ -1962,7 +2058,7 @@
     const trim = design === 'jersey' ? COL.white : P.fesbBlue;
     const seed = L.hash('tee', design, view) % 5000;
     const draw = o.draw == null ? 1 : clamp(o.draw);
-    const sh = (pts, fill, k, extra) => SH(ctx, MM(pts), Object.assign({ fill, width: ow, seed: seed + k, draw, shade: { color: SHADE, side: 'right', frac: 0.14 } }, extra));
+    const sh = (pts, fill, k, extra) => SHP(ctx, MM(pts), Object.assign({ fill, width: ow, seed: seed + k, draw, shade: { color: SHADE, side: 'right', frac: 0.14 } }, extra));
     ctx.save();
     if (alpha < 1) ctx.globalAlpha *= alpha;
     // sleeves, rotating about the shoulders
