@@ -32,22 +32,22 @@ FILM.scene({
     ctx.restore();
 
     // --- FESB logos: large, with outline, tiny
-    Pr.fesbLogo(ctx, 1440, 170, 190);
-    Pr.fesbLogo(ctx, 1395, 350, 80, { outline: true });
-    Pr.fesbLogo(ctx, 1475, 350, 40, { outline: true });
+    Pr.fesbLogo(ctx, 1400, 160, 170);
+    Pr.fesbLogo(ctx, 1360, 330, 76, { outline: true });
+    Pr.fesbLogo(ctx, 1440, 330, 40, { outline: true });
 
     // --- the lockup
-    Pr.lockup(ctx, 1720, 250, 0.4, { t, sweep: (t * 0.8) % 1 });
+    Pr.lockup(ctx, 1660, 250, 0.36, { t, sweep: (t * 0.8) % 1 });
 
-    // --- captions in every style
-    Pr.caption(ctx, 'Релиз FESB 9', 40, 548, 88, { align: 'left', style: 'gold' });
-    Pr.caption(ctx, '2 октября · Spaten House', 40, 650, 58, { align: 'left', style: 'white' });
-    Pr.caption(ctx, 'Prost!', 1000, 560, 120, { style: 'gold', rot: -0.1, pop: Math.min(1, 0.4 + t * 2) });
-    Pr.caption(ctx, 'FESB 9', 1000, 668, 64, { style: 'blue' });
-    Pr.caption(ctx, 'OktoberFESB', 1500, 560, 100, { style: 'split' });
-    Pr.caption(ctx, 'OktoberFESB', 1500, 668, 70, { style: 'split', letters: 0.55 + t * 0.3 });
+    // --- captions in every style (text stays inside x 80..1840)
+    Pr.caption(ctx, 'Релиз FESB 9', 100, 548, 84, { align: 'left', style: 'gold' });
+    Pr.caption(ctx, 'Prost!', 1020, 552, 104, { style: 'gold', rot: -0.1, pop: Math.min(1, 0.4 + t * 2) });
+    Pr.caption(ctx, 'OktoberFESB', 1515, 548, 80, { style: 'split' });
+    Pr.caption(ctx, '2 октября · Spaten House', 100, 662, 50, { align: 'left', style: 'blue' });
+    Pr.caption(ctx, 'Релиз FESB 9', 1120, 662, 50, { style: 'white', ribbon: Math.min(1, 0.5 + t) });
+    Pr.caption(ctx, 'OktoberFESB', 1600, 662, 58, { style: 'split', letters: 0.55 + t * 0.3 });
     Pr.bubbles(ctx, 'sheet', t, { x: 1180, y: 440, w: 700, h: 270 }, { count: 12 });
-    Pr.confetti(ctx, 'sheet', 0.45 + t, 820, 480, { count: 50, spread: 360 });
+    Pr.confetti(ctx, 'sheet', 0.45 + t, 880, 470, { count: 50, spread: 360 });
 
     Pr.garland(ctx, -10, 712, 1930, 712, 24, { t });
 

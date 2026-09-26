@@ -51,9 +51,8 @@ FILM.scene({
     });
     quad(960, 540, () => {
       Pr.hallBack(ctx, { variant: 'hall', camX: -500, t, dim: 0.2 });
-      Pr.lockup(ctx, 960, 500, 1, { t });
-      Pr.caption(ctx, 'Prost!', 1560, 200, 130, { rot: 0.12 });
-      Pr.caption(ctx, 'Релиз FESB 9', 960, 960, 70, { style: 'white', ribbon: 1 });
+      Pr.lockup(ctx, 960, 450, 0.9, { t });
+      Pr.caption(ctx, 'Prost!', 1480, 200, 110, { rot: 0.12 });
     });
     void L;
   },

@@ -53,7 +53,7 @@
   /**
    * ink(ctx, pts, q): lib.inkPath with LINE, compensated for a local scale u (px per local unit) so a
    * prop drawn under ctx.scale keeps a screen-true line. q: closed, width (px), color, alpha, seed,
-   * draw, boil, u, smooth, pressure, taper (px), swell.
+   * draw, boil, u, smooth, pressure, taper (px), swell, step (px between samples, default 4).
    */
   function ink(ctx, pts, q) {
     const u = q.u || 1;
@@ -75,7 +75,7 @@
       boilAmp: LINE.boilAmp / u,
       widthJitter: LINE.widthJitter,
       taper: Array.isArray(tp) ? [tp[0] / u, tp[1] / u] : tp / u,
-      step: 2.5 / u,
+      step: (q.step || 4) / u,
       wobbleFreq: u / 150,
       overlap: 14 / u,
       swell: q.swell != null ? q.swell : 0.08,
@@ -301,7 +301,8 @@
   /**
    * shape(ctx, pts, o): a closed filled shape with a cel tone, gloss and a boiling outline.
    *   fill      colour or gradient (none = outline only)
-   *   shade     { color, pts } or { color, side: 'right'|'left'|'bottom'|'top', frac 0.25 }
+   *   shade     { color, pts } or { color, side: 'right'|'left'|'bottom'|'top', frac 0.25 } or { color, dx, dy }
+   *             (the shape minus a copy of itself shifted by dx, dy: a crescent on the far side)
    *   gloss     [[x, y, len, angle, width?], ...] white strokes (len 0 = a dot)
    *   width     outline px (default LINE.W.secondary); outline false skips it; color (outline)
    *   u         px per local unit of the current transform (default 1) so widths stay screen-true
@@ -508,7 +509,7 @@
   const rimFrontY = (x) => -100 + MG.ry * Math.sqrt(Math.max(0, 1 - (x / MG.hwT) ** 2));
 
   /** the foam crown above the rim (with drips when foam > 1), or null. Local mug units. */
-  function mugCrown(fill, foam, seed) {
+  function mugCrown(fill, foam, seed, crownK = 1) {
     const surfaceY = -(MG.base + fill * (100 - MG.base));
     const foamTop = surfaceY - foam * MG.foamH;
     if (foam <= 0.01 || fill <= 0.005 || foamTop > -101) return null;
@@ -516,10 +517,11 @@
     const r = L.rng(L.hash('crown', seed));
     const hw = MG.hwT;
     const n = 5;
+    const ck = clamp(crownK, 0.6, 1.5);
     const C = [];
     for (let i = 0; i < n; i++) {
-      const x = lerp(-hw * 0.8, hw * 0.8, i / (n - 1)) + r.range(-1.5, 1.5);
-      let rad = hw * (i === 0 || i === n - 1 ? 0.3 : 0.36) * r.range(0.92, 1.12);
+      const x = lerp(-hw * 0.8, hw * 0.8, i / (n - 1)) * Math.sqrt(ck) + r.range(-1.5, 1.5);
+      let rad = hw * (i === 0 || i === n - 1 ? 0.3 : 0.36) * ck * r.range(0.92, 1.12);
       rad = Math.min(rad, Math.max(3.5, hc * 0.95));
       const drop = (x / hw) ** 2 * Math.min(9, hc * 0.45) + r.range(0, Math.min(3, hc * 0.15));
       let cy = foamTop + rad + drop;
@@ -600,8 +602,10 @@
    * the foam crown rises above). Reference size 300 px. G1: mug(ctx, 960, 900, 520, { logo: true, line: 'hero' }).
    *   fill 0.86 (beer level 0..1 of the inside)    foam 1 (0..1.4; above 1 it overflows in drips)
    *   logo false   tilt 0 (radians about the base)   slosh 0 (-1..1)   bubbles false   t 0 (seconds)
-   *   blueprint false (art bible 5 line art)   dimples true   line 'secondary'   flip, alpha, draw, seed
-   * Returns { handle: [x, y], rim: [x, y, w], logo: [x, y, size], top: [x, y] } in canvas px.
+   *   blueprint false (art bible 5 line art)   dimples true   crown 1 (foam crown size)   line 'secondary'
+   *   width (outline px override), flip, alpha, draw, seed
+   * Returns { handle: [x, y], rim: [x, y, w], logo: [x, y, size], top: [x, y] } in canvas px (top: the
+   * foam or beer top). alpha 0 or draw 0 returns the anchors without touching ctx (it may be null).
    */
   function mug(ctx, x, y, h, o = {}) {
     x = num(x, 0);
@@ -634,6 +638,7 @@
       logo: !!o.logo,
       bubbles: !!o.bubbles,
       dimples: o.dimples !== false,
+      crown: num(o.crown, 1),
       boil: o.boil,
     };
     ctx.save();
@@ -667,7 +672,7 @@
     // 1. handle
     shape(ctx, MUG_HANDLE, {
       fill: P.glass,
-      shade: { color: rgba(P.glassEdge, 0.55), side: 'right', frac: 0.28 },
+      shade: st.h >= 150 ? { color: rgba(P.glassEdge, 0.55), side: 'right', frac: 0.28 } : null,
       width: lw, u, seed: L.hash(seed, 1), boil: st.boil,
     });
     // 2. body glass
@@ -677,28 +682,32 @@
     // 3. beer and the foam band inside the glass
     const interior = MUG_INTERIOR_PATH();
     const hasBeer = fill > 0.005;
-    const crown = mugCrown(fill, foam, seed);
+    const crown = mugCrown(fill, foam, seed, st.crown);
     if (hasBeer) {
       ctx.save();
       ctx.clip(interior);
-      const beer = new Path2D();
-      beer.moveTo(-40, surf(-40));
-      for (let xx = -35; xx <= 40; xx += 5) beer.lineTo(xx, surf(xx));
-      beer.lineTo(40, 4);
-      beer.lineTo(-40, 4);
-      beer.closePath();
+      // regions between two curves over an x range: no nested clips
+      const band = (xa, xb, top, bot) => {
+        const p = new Path2D();
+        p.moveTo(xa, top(xa));
+        for (let xx = xa + 4; xx < xb; xx += 4) p.lineTo(xx, top(xx));
+        p.lineTo(xb, top(xb));
+        for (let xx = xb; xx > xa; xx -= 4) p.lineTo(xx, bot(xx));
+        p.lineTo(xa, bot(xa));
+        p.closePath();
+        return p;
+      };
+      const floor = () => 4;
       const g = ctx.createLinearGradient(0, st.surfaceY - 4, 0, -MG.base);
       g.addColorStop(0, P.beerLight);
       g.addColorStop(0.3, P.beer);
       g.addColorStop(1, P.beerDeep);
       ctx.fillStyle = g;
-      ctx.fill(beer);
-      ctx.save();
-      ctx.clip(beer);
+      ctx.fill(band(-40, 40, surf, floor));
       ctx.fillStyle = rgba(P.beerDeep, 0.55);
-      ctx.fillRect(hwIn * 0.42, -110, 40, 120);
+      ctx.fill(band(hwIn * 0.42, 40, surf, floor));
       ctx.fillStyle = rgba(P.beerLight, 0.55);
-      ctx.fillRect(-hwIn * 0.86, -110, hwIn * 0.3, 120);
+      ctx.fill(band(-hwIn * 0.86, -hwIn * 0.56, surf, floor));
       // carbonation
       if (st.bubbles && st.h >= 50) {
         const r = L.rng(L.hash('fizz', seed));
@@ -711,29 +720,22 @@
             const bx = r.range(-0.8, 0.8) * hwIn, sp = r.range(9, 20), ph = r(), rad = r.range(1, 2.5) / u;
             const yy = bot - ((ph * span + sp * st.t) % span);
             const xx = bx + Math.sin(st.t * 3 + i * 1.7) * 0.8;
+            if (yy - rad < surf(xx) + 1) continue;
             ctx.moveTo(xx + rad, yy);
             ctx.arc(xx, yy, rad, 0, TAU);
           }
           ctx.fill();
         }
       }
-      ctx.restore();
-      // foam band
+      // foam band on the beer
       if (foam > 0.01) {
-        const bandTop = crown ? -104 : st.foamTop;
-        const band = new Path2D();
-        const tp = (xx) => (crown ? bandTop : surf(xx) - (st.surfaceY - st.foamTop) + 0.9 * Math.sin(xx * 0.45 + 1.3));
-        band.moveTo(-40, tp(-40));
-        for (let xx = -36; xx <= 40; xx += 4) band.lineTo(xx, tp(xx));
-        for (let xx = 40; xx >= -40; xx -= 3) band.lineTo(xx, surf(xx) + 1.2 + 1.5 * Math.abs(Math.sin(xx * 0.42 + 0.7)));
-        band.closePath();
+        const thick = st.surfaceY - st.foamTop;
+        const top = crown ? () => -104 : (xx) => surf(xx) - thick + 0.9 * Math.sin(xx * 0.45 + 1.3);
+        const bot = (xx) => surf(xx) + 1.2 + 1.5 * Math.abs(Math.sin(xx * 0.42 + 0.7));
         ctx.fillStyle = P.foam;
-        ctx.fill(band);
-        ctx.save();
-        ctx.clip(band);
+        ctx.fill(band(-40, 40, top, bot));
         ctx.fillStyle = P.foamShade;
-        ctx.fillRect(hwIn * 0.5, -130, 40, 140);
-        ctx.restore();
+        ctx.fill(band(hwIn * 0.5, 40, top, bot));
       }
       ctx.restore();
     }
@@ -831,7 +833,7 @@
         ],
         width: lw, u, seed: L.hash(seed, 2), boil: st.boil,
       });
-      if (st.h >= 70) {
+      if (st.h >= 140) {
         // foam texture: a few bubble rings
         const r = L.rng(L.hash('foamtex', seed));
         ctx.save();
@@ -904,7 +906,7 @@
     ctx.stroke();
     ctx.restore();
     // foam as a scalloped outline
-    const crown = mugCrown(fill, foam, seed);
+    const crown = mugCrown(fill, foam, seed, st.crown);
     if (crown) ink(ctx, crown.pts, { closed: true, width: 3, u, color: P.lineWhite, alpha: 0.85, seed: L.hash(seed, 2), draw, boil: st.boil });
     else if (foam > 0.01 && fill > 0.005) {
       const line = [];
@@ -1132,14 +1134,30 @@
     [0, 0.04 * len], [-0.2 * wid, 0], [-0.42 * wid, -0.14 * len], [-0.5 * wid, -0.44 * len], [-0.36 * wid, -0.76 * len],
   ];
   const WHEAT_KERNELS = (() => {
-    const out = [[0, -89, 12.5, 6, 0]];
+    const out = [[0, -88, 14, 7.6, 0]];
     for (let j = 5; j >= 0; j--) {
-      const yy = -46 - j * 8.2;
-      const len = 14.5 - j * 0.9, wid = 7.4 - j * 0.4, ang = 0.5 - j * 0.035;
-      out.push([-1.7, yy, len, wid, -ang], [1.7, yy, len, wid, ang]);
+      const yy = -44 - j * 8.4;
+      const len = 17 - j * 1.05, wid = 9.6 - j * 0.5, ang = 0.52 - j * 0.035;
+      out.push([-2, yy, len, wid, -ang], [2, yy, len, wid, ang]);
     }
     return out;
   })();
+  function hull(points) {
+    const pts = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const p of pts) {
+      while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop();
+      lo.push(p);
+    }
+    for (let i = pts.length - 1; i >= 0; i--) {
+      const p = pts[i];
+      while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop();
+      up.push(p);
+    }
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  }
+  const WHEAT_HULL = hull([].concat(...WHEAT_KERNELS.map(([kx, ky, len, wid, ang]) => xform(KERNEL(len, wid), kx, ky, ang))));
 
   function wheatImpl(ctx, x, y, h, o, rim) {
     h = clamp(num(h, 300), 2, 6000);
@@ -1160,8 +1178,9 @@
     });
     if (rim) {
       const w = (2 * (rim.pad + lw * 0.4)) / u;
-      silhouette(ctx, stalk, rim.color, w);
-      for (const kk of kernels) silhouette(ctx, kk.pts, rim.color, w);
+      silhouette(ctx, stalk, rim.color, w, false);
+      if (!bend) silhouette(ctx, WHEAT_HULL, rim.color, w, false);
+      else for (const kk of kernels) silhouette(ctx, kk.pts, rim.color, w);
     } else {
       const draw = o.draw == null ? 1 : clamp(o.draw);
       shape(ctx, stalk, { fill: P.wheatDeep, width: lw * 0.75, u, seed: L.hash(seed, 99), draw, boil: o.boil });
@@ -1208,8 +1227,8 @@
     return pts;
   }
   const HOP_LEAVES = [
-    [-6, -58, 58, 34, -1.05],
-    [7, -64, 52, 30, 0.95],
+    [-6, -56, 68, 42, -1.05],
+    [7, -62, 62, 38, 0.95],
   ];
 
   function hopsImpl(ctx, x, y, h, o, rim) {
@@ -1434,7 +1453,7 @@
 
   /**
    * knuckle(ctx, x, y, h, o): Schweinshaxe on its plate with dumpling, kraut and gravy; base centre (x, y),
-   * height h (ref 400, width about 1.9 h). squash 0..1 (landing squash of the knuckle), line, flip, alpha.
+   * height h (ref 400, width about 1.9 h). squash 0..1 (landing squash of the knuckle), line, flip, alpha, draw.
    */
   function knuckle(ctx, x, y, h, o = {}) {
     h = clamp(num(h, 300), 4, 6000);
@@ -1444,14 +1463,17 @@
     const seed = o.seed == null ? 'knuckle' : o.seed;
     const sq = b01(o.squash, 0);
     const alpha = b01(o.alpha);
-    if (alpha <= 0) return;
+    const draw = o.draw == null ? 1 : clamp(o.draw);
+    if (alpha <= 0 || draw <= 0) return;
     const S = (i) => L.hash(seed, i);
+    const full = draw >= 1;
     ctx.save();
     ctx.translate(num(x, 0), num(y, 0));
     ctx.scale(o.flip ? -u : u, u);
     if (alpha < 1) ctx.globalAlpha *= alpha;
     // plate
-    shape(ctx, ellPts(0, -11, 94, 21, 44), { fill: P.plate, shade: { color: FOOD_PLATE_SHADE(), side: 'bottom', frac: 0.3 }, width: lw, u, seed: S(1), boil: o.boil });
+    shape(ctx, ellPts(0, -11, 94, 21, 44), { fill: P.plate, shade: { color: FOOD_PLATE_SHADE(), side: 'bottom', frac: 0.3 }, width: lw, u, seed: S(1), boil: o.boil, draw });
+    if (full) {
     ctx.save();
     ctx.strokeStyle = rgba(P.outlineSoft, 0.3);
     ctx.lineWidth = dl / u;
@@ -1459,13 +1481,15 @@
     ctx.ellipse(0, -12, 74, 15, 0, 0, TAU);
     ctx.stroke();
     ctx.restore();
+    }
     // gravy pool
     const r = L.rng(S(2));
     const gravy = ellPts(-2, -13, 64, 12.5, 26).map(([gx, gy], i) => [gx + r.range(-2, 2), gy + r.range(-1, 1) + (i % 3 === 0 ? 1.2 : 0)]);
-    shape(ctx, gravy, { fill: P.crust, shade: { color: rgba(P.crackling, 0.45), side: 'top', frac: 0.35 }, gloss: [[-34, -18, 12, 0.08, 1.8], [22, -9, 0, 0, 2]], width: dl, color: P.outlineSoft, u, seed: S(3), boil: o.boil });
+    shape(ctx, gravy, { fill: P.crust, shade: { color: rgba(P.crackling, 0.45), side: 'top', frac: 0.35 }, gloss: [[-34, -18, 12, 0.08, 1.8], [22, -9, 0, 0, 2]], width: dl, color: P.outlineSoft, u, seed: S(3), boil: o.boil, draw });
     // sauerkraut on the left
     const kraut = [[-84, -12], [-82, -22], [-74, -30], [-62, -34], [-50, -31], [-42, -22], [-40, -13], [-60, -9]];
-    shape(ctx, kraut, { fill: P.kraut, shade: { color: rgba(P.wheatDeep, 0.35), side: 'right', frac: 0.3 }, width: lw * 0.8, u, seed: S(4), boil: o.boil });
+    shape(ctx, kraut, { fill: P.kraut, shade: { color: rgba(P.wheatDeep, 0.35), side: 'right', frac: 0.3 }, width: lw * 0.8, u, seed: S(4), boil: o.boil, draw });
+    if (full) {
     ctx.save();
     ctx.strokeStyle = rgba(P.wheatDeep, 0.55);
     ctx.lineCap = 'round';
@@ -1479,14 +1503,15 @@
     }
     ctx.stroke();
     ctx.restore();
+    }
     // the knuckle (squashes about its base)
     ctx.save();
     ctx.translate(-4, -16);
     ctx.scale(1 + 0.1 * sq, 1 - 0.12 * sq);
     // bone behind the dome, at 30 degrees up-right
-    shape(ctx, ellPts(44, -63, 7.5, 7.5, 16), { fill: P.plate, shade: { color: P.foamShade, side: 'right', frac: 0.3 }, width: lw * 0.85, u, seed: S(6), boil: o.boil });
-    shape(ctx, ellPts(50, -53, 7.5, 7.5, 16), { fill: P.plate, shade: { color: P.foamShade, side: 'right', frac: 0.3 }, width: lw * 0.85, u, seed: S(7), boil: o.boil });
-    shape(ctx, xform(rrPts(-2, -5.5, 36, 11, 5, 6), 18, -38, -Math.PI / 6), { fill: P.plate, shade: { color: P.foamShade, side: 'bottom', frac: 0.3 }, gloss: [[24, -44, 12, -Math.PI / 6, 2]], width: lw * 0.85, u, seed: S(8), boil: o.boil });
+    shape(ctx, ellPts(44, -63, 7.5, 7.5, 16), { fill: P.plate, shade: { color: P.foamShade, side: 'right', frac: 0.3 }, width: lw * 0.85, u, seed: S(6), boil: o.boil, draw });
+    shape(ctx, ellPts(50, -53, 7.5, 7.5, 16), { fill: P.plate, shade: { color: P.foamShade, side: 'right', frac: 0.3 }, width: lw * 0.85, u, seed: S(7), boil: o.boil, draw });
+    shape(ctx, xform(rrPts(-2, -5.5, 36, 11, 5, 6), 18, -38, -Math.PI / 6), { fill: P.plate, shade: { color: P.foamShade, side: 'bottom', frac: 0.3 }, gloss: [[24, -44, 12, -Math.PI / 6, 2]], width: lw * 0.85, u, seed: S(8), boil: o.boil, draw });
     const dr = L.rng(S(9));
     const dome = [];
     for (let i = 0; i <= 22; i++) {
@@ -1499,11 +1524,12 @@
       fill: P.crackling,
       shade: { color: P.crust, side: 'right', frac: 0.26 },
       gloss: [[-34, -34, 20, -1.2, 4.4], [-22, -52, 0, 0, 4]],
-      width: lw, u, seed: S(10), boil: o.boil,
+      width: lw, u, seed: S(10), boil: o.boil, draw,
     });
     // blistered bumps
     const br = L.rng(S(11));
     const light = L.mix(P.crackling, P.gold, 0.3);
+    if (full) {
     ctx.save();
     ctx.clip(smoothPath(dome, true));
     for (let i = 0; i < 11; i++) {
@@ -1526,8 +1552,10 @@
       }
     }
     ctx.restore();
+    }
     // the cut, showing the meat on the left
-    shape(ctx, ellPts(-31, -24, 12.5, 18, 20, 0.35), { fill: P.meat, shade: { color: rgba(P.crust, 0.35), side: 'right', frac: 0.25 }, width: dl, color: P.outlineSoft, u, seed: S(12), boil: o.boil });
+    shape(ctx, ellPts(-31, -24, 12.5, 18, 20, 0.35), { fill: P.meat, shade: { color: rgba(P.crust, 0.35), side: 'right', frac: 0.25 }, width: dl, color: P.outlineSoft, u, seed: S(12), boil: o.boil, draw });
+    if (full) {
     ctx.save();
     ctx.strokeStyle = rgba(P.crust, 0.55);
     ctx.lineWidth = Math.max(1, 1.8 * k) / u;
@@ -1538,14 +1566,15 @@
     }
     ctx.stroke();
     ctx.restore();
+    }
     ctx.restore();
     // dumpling front right
     shape(ctx, ellPts(56, -20, 16.5, 15.5, 22), {
       fill: P.hallWarm, shade: { color: rgba('#000000', 0.12), side: 'right', frac: 0.3 },
-      gloss: [[48, -27, 5, -0.8, 2.6]], width: lw * 0.9, u, seed: S(13), boil: o.boil,
+      gloss: [[48, -27, 5, -0.8, 2.6]], width: lw * 0.9, u, seed: S(13), boil: o.boil, draw,
     });
     ctx.fillStyle = P.leaf;
-    for (const [px, py] of [[54, -33], [60, -31], [57, -35.5]]) {
+    if (full) for (const [px, py] of [[54, -33], [60, -31], [57, -35.5]]) {
       ctx.beginPath();
       ctx.arc(px, py, 1.4, 0, TAU);
       ctx.fill();
@@ -1614,25 +1643,27 @@
     ctx.restore();
   }
 
-  /** sausages(ctx, x, y, h, o): two grilled sausages with mustard on a small plate; base centre, height h (ref 150) */
+  /** sausages(ctx, x, y, h, o): two grilled sausages with mustard on a small plate; base centre, height h (ref 150). rot, flip, draw */
   function sausages(ctx, x, y, h, o = {}) {
     h = clamp(num(h, 120), 4, 4000);
     const u = h / 100, k = h / 150;
     const lw = o.width != null ? o.width : lineW(o, k);
     const seed = o.seed == null ? 'sausages' : o.seed;
     const alpha = b01(o.alpha);
-    if (alpha <= 0) return;
+    const draw = o.draw == null ? 1 : clamp(o.draw);
+    if (alpha <= 0 || draw <= 0) return;
     ctx.save();
     ctx.translate(num(x, 0), num(y, 0));
     if (o.rot) ctx.rotate(o.rot);
     ctx.scale(o.flip ? -u : u, u);
     if (alpha < 1) ctx.globalAlpha *= alpha;
-    shape(ctx, ellPts(0, -16, 86, 19, 40), { fill: P.plate, shade: { color: FOOD_PLATE_SHADE(), side: 'bottom', frac: 0.3 }, width: lw, u, seed: L.hash(seed, 1), boil: o.boil });
+    shape(ctx, ellPts(0, -16, 86, 19, 40), { fill: P.plate, shade: { color: FOOD_PLATE_SHADE(), side: 'bottom', frac: 0.3 }, width: lw, u, seed: L.hash(seed, 1), boil: o.boil, draw });
     const sw = (t) => 18 * (0.86 + 0.14 * Math.sin(Math.PI * t));
     const S2 = [[-58, -40], [-24, -54], [18, -56], [56, -46]];
     const S1 = [[-62, -24], [-26, -36], [16, -38], [54, -28]];
     for (const [ctrl, i] of [[S2, 2], [S1, 3]]) {
-      const pts = tubeShape(ctx, ctrl, sw, P.sausage, P.crust, { lw, u, sh: 3, seed: L.hash(seed, i), boil: o.boil, gloss: [[ctrl[1][0] - 6, ctrl[1][1] - 5, 20, 0.15, 3]] });
+      const pts = tubeShape(ctx, ctrl, sw, P.sausage, P.crust, { lw, u, sh: 3, seed: L.hash(seed, i), boil: o.boil, draw, gloss: [[ctrl[1][0] - 6, ctrl[1][1] - 5, 20, 0.15, 3]] });
+      if (draw < 1) continue;
       // grill marks
       ctx.save();
       ctx.clip(smoothPath(pts, true));
@@ -1652,7 +1683,7 @@
     // mustard dollop
     shape(ctx, [[48, -10], [62, -14], [72, -12], [70, -18], [62, -22], [59, -27], [54, -21], [46, -18]], {
       fill: P.beer, shade: { color: P.beerDeep, side: 'right', frac: 0.3 }, gloss: [[55, -20, 0, 0, 2.2]],
-      width: lw * 0.8, u, seed: L.hash(seed, 4), boil: o.boil,
+      width: lw * 0.8, u, seed: L.hash(seed, 4), boil: o.boil, draw,
     });
     ctx.restore();
   }
@@ -1663,8 +1694,9 @@
 
   const LK = {
     mugH: 460, base: 153,
-    ears: [[-196, 150, 390, -0.3], [-232, 160, 335, -0.72], [196, 150, 390, 0.3], [232, 160, 335, 0.72]],
-    hops: [[-190, 190, 150, -0.12, false], [214, 192, 150, 0.1, true]],
+    ears: [[-178, 158, 410, -0.27], [-214, 168, 360, -0.64], [178, 158, 410, 0.27], [214, 168, 360, 0.64]],
+    hops: [[-196, 206, 190, -0.12, false], [222, 208, 190, 0.1, true]],
+    crown: 1.22,
     word: { y: 302, size: 150, maxW: 880, arch: 34 },
     year: { y: 416, size: 100 },
     sprigs: [[-162, 384, 150, -Math.PI / 2 - 0.04], [162, 384, 150, Math.PI / 2 + 0.04]],
@@ -1715,7 +1747,7 @@
           const w = (2 * (pad + lw * 0.45)) / u;
           silhouette(ctx, MUG_BODY, color, w);
           silhouette(ctx, MUG_HANDLE, color, w);
-          const cr = mugCrown(0.86, foam, L.hash(seed, 'mug'));
+          const cr = mugCrown(0.86, foam, L.hash(seed, 'mug'), LK.crown);
           if (cr) silhouette(ctx, cr.pts, color, w);
           ctx.restore();
         }
@@ -1726,7 +1758,7 @@
     ears.forEach(([ex, ey, eh, rot]) => {
       if (eh > 4) wheat(ctx, ex, ey, eh, Object.assign({ rot, flip: ex > 0, seed: L.hash(seed, 'ear', ex) }, heroLine));
     });
-    if (mh > 2) mug(ctx, 0, LK.base, mh, { fill: 0.86, foam, logo: true, bubbles: true, t, line: 'hero', seed: L.hash(seed, 'mug') });
+    if (mh > 2) mug(ctx, 0, LK.base, mh, { fill: 0.86, foam, crown: LK.crown, logo: true, bubbles: true, t, line: 'hero', seed: L.hash(seed, 'mug') });
     if (hK > 0.01) for (const [hx, hy, hh, rot, fl] of LK.hops) hops(ctx, hx, hy, hh * hK, Object.assign({ rot, flip: fl, seed: L.hash(seed, 'hop', hx) }, heroLine));
     // lettering
     const sweep = o.sweep != null && o.sweep > 0 && o.sweep < 1 ? o.sweep : null;
@@ -1779,7 +1811,7 @@
 
   function drawHall(g, variant, b) {
     const X0 = -HALL_M, X1 = HALL_W + HALL_M, WW = X1 - X0;
-    const bg = (pts, seed, closed = true, width = 3, alpha = 0.7) => ink(g, pts, { closed, width, color: P.outline, alpha, seed, boil: b, smooth: false });
+    const bg = (pts, seed, closed = true, width = 3, alpha = 0.7) => ink(g, pts, { closed, width, color: P.outline, alpha, seed, boil: b, smooth: false, step: 7 });
     const rect = (x, y, w, h) => rrPts(x, y, w, h, 1.5, 60);
     const isCounter = variant === 'counter', isDoor = variant === 'door';
     const floorY = 880;
@@ -2092,6 +2124,17 @@
       bg([[X0, 1031], [X1, 1031]], 'rail1', false, 3, 0.9);
       bg([[X0, 1047], [X1, 1047]], 'rail2', false, 3, 0.9);
     }
+    // vertical vignette (background light), baked: it does not move with the parallax
+    const vt = g.createLinearGradient(0, 0, 0, 320);
+    vt.addColorStop(0, rgba(P.hallDim, 0.5));
+    vt.addColorStop(1, rgba(P.hallDim, 0));
+    g.fillStyle = vt;
+    g.fillRect(X0, 0, WW, 320);
+    const vb = g.createLinearGradient(0, 860, 0, HALL_H);
+    vb.addColorStop(0, rgba(P.hallDim, 0));
+    vb.addColorStop(1, rgba(P.hallDim, 0.45));
+    g.fillStyle = vb;
+    g.fillRect(X0, 860, WW, HALL_H - 860);
   }
 
   /**
@@ -2142,17 +2185,10 @@
         ctx.fill();
       }
     }
-    // vignette (background light) and the dim
-    const vg = ctx.createRadialGradient(960, 520, 420, 960, 520, 1180);
-    vg.addColorStop(0, rgba(P.hallDim, 0));
-    vg.addColorStop(1, rgba(P.hallDim, 0.5));
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, HALL_W, HALL_H);
+    // the dim, for the spotlight
     const dim = b01(o.dim, 0);
     if (dim > 0) {
-      ctx.fillStyle = rgba(P.hallDim, 0.78 * dim);
-      ctx.fillRect(0, 0, HALL_W, HALL_H);
-      ctx.fillStyle = rgba('#000000', 0.25 * dim);
+      ctx.fillStyle = rgba(L.mix(P.hallDim, '#000000', 0.3), 0.82 * dim);
       ctx.fillRect(0, 0, HALL_W, HALL_H);
     }
     ctx.restore();
@@ -2164,7 +2200,8 @@
 
   /**
    * bunting(ctx, x0, y0, x1, y1, sag, o): a swag of Bavarian lozenge pennants between two points.
-   *   size 60 (pennant width px)   t (gentle sway)   line 'background' (default: 3 px at 70%)   seed, alpha
+   *   size 60 (pennant width px)   t (gentle sway)   line 'background' (default: 3 px at 70%)   seed, alpha,
+   *   draw (the cord draws on and pennants appear along it)
    */
   function bunting(ctx, x0, y0, x1, y1, sag, o = {}) {
     x0 = num(x0, 0); y0 = num(y0, 0); x1 = num(x1, 1920); y1 = num(y1, 0); sag = num(sag, 60);
@@ -2176,7 +2213,8 @@
     const lw = o.width != null ? o.width : lineW({ line }, k);
     const la = line === 'background' ? 0.7 : 1;
     const alpha = b01(o.alpha);
-    if (alpha <= 0) return;
+    const draw = o.draw == null ? 1 : clamp(o.draw);
+    if (alpha <= 0 || draw <= 0) return;
     const len = Math.hypot(x1 - x0, y1 - y0 + sag);
     const n = Math.max(1, Math.floor(len / (size * 1.1)));
     const ph0 = (L.hash(seed) % 1000) / 159;
@@ -2187,7 +2225,21 @@
     const w = size, h = size * 1.15;
     const tri = [[-w / 2, 0], [w / 2, 0], [w * 0.05, h * 0.97], [0, h], [-w * 0.05, h * 0.97]];
     const cell = size * 0.21;
-    for (let i = 0; i < n; i++) {
+    // Bavarian lozenges: a checker tile under a rotate-squash-rotate transform (tilted diamonds)
+    const tile = L.cached('fesbLozengeTile', () => {
+      const c = FILM.makeCanvas(64, 64);
+      const g = c.getContext('2d');
+      g.fillStyle = P.bavWhite;
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = P.bavBlue;
+      g.fillRect(0, 0, 32, 32);
+      g.fillRect(32, 32, 32, 32);
+      return c;
+    });
+    const pat = ctx.createPattern(tile, 'repeat');
+    if (pat && pat.setTransform) pat.setTransform(new DOMMatrix().rotate((-0.38 * 180) / Math.PI).scale(1, 0.62).rotate(45).scale(cell / 32));
+    const nShow = draw >= 1 ? n : Math.floor(n * draw);
+    for (let i = 0; i < nShow; i++) {
       const uu = (i + 0.5) / n;
       const [px, py] = swagPt(x0, y0, x1, y1, sag, uu);
       const ang = Math.atan2(y1 - y0 + sag * 4 * (1 - 2 * uu), x1 - x0 || 1e-6);
@@ -2196,31 +2248,20 @@
       ctx.translate(px, py);
       ctx.rotate(rot);
       const path = polyPath(tri, true);
-      ctx.fillStyle = P.bavWhite;
+      ctx.fillStyle = pat;
       ctx.fill(path);
-      ctx.save();
-      ctx.clip(path);
-      ctx.rotate(-0.38);
-      ctx.scale(1, 0.62);
-      ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = P.bavBlue;
-      ctx.beginPath();
-      const R = Math.ceil((size * 1.6) / cell);
-      for (let a = -R; a <= R; a++) for (let c = -R; c <= R; c++) if (((a + c) & 1) === 0) ctx.rect(a * cell, c * cell, cell, cell);
-      ctx.fill();
-      ctx.restore();
       ctx.fillStyle = rgba('#000000', 0.1);
       ctx.fill(polyPath([[w * 0.18, 0], [w / 2, 0], [w * 0.05, h * 0.97], [0, h]], true));
       ink(ctx, tri, { closed: true, width: lw, alpha: la, seed: L.hash(seed, i), boil: o.boil, smooth: false });
       ctx.restore();
     }
-    ink(ctx, cord, { width: Math.max(1.5, 2.5 * k), color: P.outlineSoft, seed: L.hash(seed, 'cord'), boil: o.boil });
+    ink(ctx, cord, { width: Math.max(1.5, 2.5 * k), color: P.outlineSoft, seed: L.hash(seed, 'cord'), boil: o.boil, draw });
     ctx.restore();
   }
 
   /**
    * garland(ctx, x0, y0, x1, y1, sag, o): a string of warm bulbs with soft glows.
-   *   spacing 54 px, r 8 (bulb radius), glow 1, t (twinkle), seed, alpha
+   *   spacing 54 px, r 8 (bulb radius), glow 1, t (twinkle), seed, alpha, draw
    */
   function garland(ctx, x0, y0, x1, y1, sag, o = {}) {
     x0 = num(x0, 0); y0 = num(y0, 0); x1 = num(x1, 1920); y1 = num(y1, 0); sag = num(sag, 50);
@@ -2230,7 +2271,8 @@
     const t = num(o.t, 0);
     const seed = o.seed == null ? 'garland' : o.seed;
     const alpha = b01(o.alpha);
-    if (alpha <= 0) return;
+    const draw = o.draw == null ? 1 : clamp(o.draw);
+    if (alpha <= 0 || draw <= 0) return;
     const len = Math.hypot(x1 - x0, y1 - y0 + sag);
     const n = Math.max(1, Math.floor(len / spacing));
     const sn = L.hash(seed) & 1023;
@@ -2240,7 +2282,8 @@
     for (let i = 0; i <= 24; i++) cord.push(swagPt(x0, y0, x1, y1, sag, i / 24));
     const spr = glowSprite(P.bulb);
     const pts = [];
-    for (let i = 0; i < n; i++) {
+    const nShow = draw >= 1 ? n : Math.floor(n * draw);
+    for (let i = 0; i < nShow; i++) {
       const uu = (i + 0.5) / n;
       const [px, py] = swagPt(x0, y0, x1, y1, sag, uu);
       const tw = 0.78 + 0.22 * L.noise1(t * 2.6 + i * 1.37, sn);
@@ -2254,30 +2297,30 @@
       }
       ctx.globalAlpha = alpha;
     }
-    ink(ctx, cord, { width: Math.max(1.5, r * 0.28), color: P.outlineSoft, seed: L.hash(seed, 'cord'), boil: o.boil });
-    const lw2 = Math.max(1.5, r * 0.26);
-    for (const [px, py, tw] of pts) {
-      ctx.fillStyle = P.outline;
-      ctx.fillRect(px - r * 0.42, py - 1, r * 0.84, r * 0.8);
-      ctx.beginPath();
-      ctx.ellipse(px, py + r * 1.55, r * 0.78, r, 0, 0, TAU);
-      ctx.fillStyle = L.mix(P.bulb, P.gloss, 0.35 * tw);
-      ctx.fill();
-      ctx.lineWidth = lw2;
-      ctx.strokeStyle = P.outline;
-      ctx.stroke();
-      ctx.fillStyle = P.gloss;
-      ctx.beginPath();
-      ctx.arc(px - r * 0.28, py + r * 1.2, r * 0.22, 0, TAU);
-      ctx.fill();
+    ink(ctx, cord, { width: Math.max(1.5, r * 0.28), color: P.outlineSoft, seed: L.hash(seed, 'cord'), boil: o.boil, draw });
+    ctx.fillStyle = P.outline;
+    for (const [px, py] of pts) ctx.fillRect(px - r * 0.42, py - 1, r * 0.84, r * 0.8);
+    const bulbs = new Path2D(), dots = new Path2D();
+    for (const [px, py] of pts) {
+      bulbs.moveTo(px + r * 0.78, py + r * 1.55);
+      bulbs.ellipse(px, py + r * 1.55, r * 0.78, r, 0, 0, TAU);
+      dots.moveTo(px - r * 0.06, py + r * 1.2);
+      dots.arc(px - r * 0.28, py + r * 1.2, r * 0.22, 0, TAU);
     }
+    ctx.fillStyle = L.mix(P.bulb, P.gloss, 0.3);
+    ctx.fill(bulbs);
+    ctx.lineWidth = Math.max(1.5, r * 0.26);
+    ctx.strokeStyle = P.outline;
+    ctx.stroke(bulbs);
+    ctx.fillStyle = P.gloss;
+    ctx.fill(dots);
     ctx.restore();
   }
 
   /**
    * table(ctx, x, y, w, o): a long wooden table seen from the side at slight elevation; (x, y) is the
    * centre of the top's front edge. depth 34 (px of top surface visible), legs 170 (top to floor),
-   * bench 'both' | 'front' | 'back' | 'none', line 'secondary', seed, alpha.
+   * bench 'both' | 'front' | 'back' | 'none', line 'secondary', seed, alpha, draw.
    * Returns { top, seatFront, seatBack, floor } (y values: where mugs stand, bench seats, the floor).
    */
   function table(ctx, x, y, w, o = {}) {
@@ -2295,25 +2338,48 @@
     const bw = w * 0.94, bd = depth * 0.55, bt = 11 * k;
     const ret = { top: y - depth / 2, seatFront: seatF, seatBack: seatB, floor };
     const alpha = b01(o.alpha);
-    if (alpha <= 0) return ret;
+    const draw = o.draw == null ? 1 : clamp(o.draw);
+    if (alpha <= 0 || draw <= 0) return ret;
+    const full = draw >= 1;
     const S = (i) => L.hash(seed, i);
-    const box = (x0, y0, ww, hh, fill, sd, shade) => shape(ctx, rrPts(x0, y0, ww, hh, Math.min(3 * k, ww / 3), 40), { fill, shade, width: lw, smooth: false, seed: sd, boil: o.boil });
+    const inkBox = (x0, y0, ww, hh, sd) =>
+      ink(ctx, rrPts(x0, y0, ww, hh, Math.min(3 * k, ww / 3), 80), { closed: true, width: lw, seed: sd, boil: o.boil, smooth: false, step: 7, draw });
+    const shadeCol = rgba('#000000', 0.2);
+    const leg = (x0, y0, ww, hh, fill, sd) => {
+      if (full) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(x0, y0, ww, hh);
+        ctx.fillStyle = shadeCol;
+        ctx.fillRect(x0 + ww * 0.55, y0, ww * 0.45, hh);
+      }
+      inkBox(x0, y0, ww, hh, sd);
+    };
+    const edge = (x0, x1, yy, sd) => ink(ctx, [[x0, yy], [x1, yy]], { width: lw * 0.6, seed: sd, boil: o.boil, step: 7, draw });
     const benchAt = (sy, floorB, sd) => {
       const lx = bw / 2 - 50 * k, lwid = 16 * k;
-      for (const sg of [-1, 1]) box(x + sg * lx - lwid / 2, sy + bt, lwid, floorB - sy - bt, P.woodMid, L.hash(sd, sg), { color: rgba('#000000', 0.2), side: 'right', frac: 0.4 });
-      if (bd > 0.5) box(x - bw / 2, sy - bd, bw, bd, P.woodLight, L.hash(sd, 'top'));
-      box(x - bw / 2, sy, bw, bt, P.woodMid, L.hash(sd, 'face'));
+      for (const sg of [-1, 1]) leg(x + sg * lx - lwid / 2, sy + bt, lwid, floorB - sy - bt, P.woodMid, L.hash(sd, sg));
+      if (full) {
+        ctx.fillStyle = P.woodLight;
+        ctx.fillRect(x - bw / 2, sy - bd, bw, bd);
+        ctx.fillStyle = P.woodMid;
+        ctx.fillRect(x - bw / 2, sy, bw, bt);
+      }
+      inkBox(x - bw / 2, sy - bd, bw, bd + bt, L.hash(sd, 'top'));
+      if (bd > 3) edge(x - bw / 2 + 2, x + bw / 2 - 2, sy, L.hash(sd, 'edge'));
     };
     ctx.save();
     if (alpha < 1) ctx.globalAlpha *= alpha;
     if (bench === 'back' || bench === 'both') benchAt(seatB, floor - depth * 1.1 - 10 * k, S('bb'));
     const lx = w / 2 - 70 * k, lwid = 22 * k;
-    for (const sg of [-1, 1]) box(x + sg * lx - lwid / 2 + 8 * k, y + th, lwid * 0.9, legs - th - depth * 0.8, L.mix(P.woodDeep, P.hallDim, 0.3), S(sg * 3));
-    // top surface with grain, then the front edge
-    box(x - w / 2, y - depth, w, depth + th, P.woodLight, S('top'));
-    ctx.fillStyle = P.woodMid;
-    ctx.fillRect(x - w / 2 + lw / 2, y, w - lw, th - lw / 2);
-    if (depth > 6) {
+    for (const sg of [-1, 1]) leg(x + sg * lx - lwid / 2 + 8 * k, y + th, lwid * 0.9, legs - th - depth * 0.8, L.mix(P.woodDeep, P.hallDim, 0.3), S(sg * 3));
+    // top surface with grain, the front edge, legs
+    if (full) {
+      ctx.fillStyle = P.woodLight;
+      ctx.fillRect(x - w / 2, y - depth, w, depth);
+      ctx.fillStyle = P.woodMid;
+      ctx.fillRect(x - w / 2, y, w, th);
+    }
+    if (full && depth > 6) {
       ctx.strokeStyle = rgba(P.outlineSoft, 0.28);
       ctx.lineWidth = Math.max(1.2, 2 * k);
       ctx.beginPath();
@@ -2326,8 +2392,9 @@
       }
       ctx.stroke();
     }
-    ink(ctx, [[x - w / 2 + 2, y], [x + w / 2 - 2, y]], { width: lw * 0.6, seed: S('edge'), boil: o.boil });
-    for (const sg of [-1, 1]) box(x + sg * lx - lwid / 2, y + th, lwid, legs - th, P.woodMid, S(sg * 5), { color: rgba('#000000', 0.2), side: 'right', frac: 0.4 });
+    inkBox(x - w / 2, y - depth, w, depth + th, S('top'));
+    edge(x - w / 2 + 2, x + w / 2 - 2, y, S('edge'));
+    for (const sg of [-1, 1]) leg(x + sg * lx - lwid / 2, y + th, lwid, legs - th, P.woodMid, S(sg * 5));
     if (bench === 'front' || bench === 'both') benchAt(seatF, floor, S('bf'));
     ctx.restore();
     return ret;
@@ -2335,8 +2402,9 @@
 
   /**
    * tap(ctx, x, y, h, o): the brass tap; (x, y) is the nozzle tip (G1: 960, 190), h the height from the
-   * tip to the top of the handle (ref 200). flow 0..1 pours a stream down to flowTo (canvas y), pull 0..1
-   * tilts the handle (default: pulled while flowing), t (s) animates the stream, line, flip, alpha.
+   * tip to the top of the handle (ref 200; about 300 reads well over the G1 mug). flow 0..1 pours a stream
+   * down to flowTo (canvas y), pull 0..1 tilts the handle (default: pulled while flowing), t (s) animates the
+   * stream, line, flip, alpha, draw.
    */
   function tap(ctx, x, y, h, o = {}) {
     x = num(x, 960); y = num(y, 190);
@@ -2348,18 +2416,19 @@
     const t = num(o.t, 0);
     const seed = o.seed == null ? 'tap' : o.seed;
     const alpha = b01(o.alpha);
-    if (alpha <= 0) return;
+    const draw = o.draw == null ? 1 : clamp(o.draw);
+    if (alpha <= 0 || draw <= 0) return;
     const S = (i) => L.hash(seed, i);
-    const brass = (pts, sd, extra) => shape(ctx, pts, Object.assign({ fill: P.gold, shade: { color: P.goldDeep, side: 'right', frac: 0.3 }, width: lw, u, seed: S(sd), boil: o.boil }, extra || {}));
+    const brass = (pts, sd, extra) => shape(ctx, pts, Object.assign({ fill: P.gold, shade: { color: P.goldDeep, side: 'right', frac: 0.3 }, width: lw, u, seed: S(sd), boil: o.boil, draw }, extra || {}));
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(o.flip ? -u : u, u);
     if (alpha < 1) ctx.globalAlpha *= alpha;
     // the stream (behind the nozzle)
     const yEnd = (num(o.flowTo, y + 3 * h) - y) / u;
-    if (flow > 0.01 && yEnd > 2) {
+    if (draw >= 1 && flow > 0.01 && yEnd > 2) {
       if (flow >= 0.14) {
-        const w0 = 7.2 * Math.sqrt(flow);
+        const w0 = 9.5 * Math.sqrt(flow);
         const edge = (sg) => {
           const pts = [];
           for (let i = 0; i <= 16; i++) {
@@ -2417,21 +2486,22 @@
         }
       }
     }
-    // wall flange, body, spout, nozzle lip
-    brass(ellPts(0, -44, 22, 22, 28), 1, { fill: L.mix(P.gold, P.goldDeep, 0.45), shade: { color: rgba(P.crust, 0.45), side: 'right', frac: 0.25 } });
-    brass([[-5.4, -30], [5.4, -30], [4.6, -10], [4.2, -3], [-4.2, -3], [-4.6, -10]], 2, { smooth: false, gloss: [[-2.6, -26, 14, Math.PI / 2, 1.4]] });
-    brass(rrPts(-5.8, -5.5, 11.6, 5.5, 1.6, 4), 3, { fill: P.goldDeep, shade: null, smooth: false });
-    brass(rrPts(-15, -58, 30, 32, 9, 8), 4, { smooth: false, gloss: [[-9, -52, 16, Math.PI / 2 - 0.05, 3], [-9, -31, 0, 0, 2.6]] });
+    // wall flange, spout, nozzle lip, body
+    brass(ellPts(0, -44, 30, 30, 32), 1, { fill: L.mix(P.gold, P.goldDeep, 0.45), shade: { color: rgba(P.crust, 0.45), side: 'right', frac: 0.25 } });
+    brass([[-7, -34], [7, -34], [5.6, -12], [5, -3.5], [-5, -3.5], [-5.6, -12]], 2, { smooth: false, gloss: [[-3.2, -28, 16, Math.PI / 2, 1.8]] });
+    brass(rrPts(-7, -6, 14, 6, 2, 4), 3, { fill: P.goldDeep, shade: null, smooth: false });
+    brass(rrPts(-22, -64, 44, 34, 13, 8), 4, { smooth: false, gloss: [[-14, -57, 18, Math.PI / 2 - 0.05, 4], [-14, -35, 0, 0, 3.4]] });
+    brass(rrPts(-10, -70, 20, 8, 3, 6), 8, { smooth: false });
     // handle: ferrule then the lever, pivoting on the body top
     ctx.save();
-    ctx.translate(0, -58);
+    ctx.translate(0, -68);
     ctx.rotate(-pull * 0.42);
-    brass(rrPts(-6.5, -9, 13, 9, 2, 6), 5, { smooth: false });
-    shape(ctx, [[-5.5, -9], [5.5, -9], [8, -34], [7, -40], [0, -42], [-7, -40], [-8, -34]], {
-      fill: P.woodDeep, shade: { color: rgba('#000000', 0.3), side: 'right', frac: 0.3 }, gloss: [[-3.8, -34, 18, Math.PI / 2 - 0.08, 2]],
-      width: lw, u, seed: S(6), boil: o.boil,
+    brass(rrPts(-7.5, -10, 15, 10, 2.5, 6), 5, { smooth: false });
+    shape(ctx, [[-6.5, -10], [6.5, -10], [9.5, -30], [8.5, -36], [0, -38.5], [-8.5, -36], [-9.5, -30]], {
+      fill: P.woodDeep, shade: { color: rgba('#000000', 0.3), side: 'right', frac: 0.3 }, gloss: [[-4.4, -31, 17, Math.PI / 2 - 0.08, 2.4]],
+      width: lw, u, seed: S(6), boil: o.boil, draw,
     });
-    brass(rrPts(-8.6, -31, 17.2, 4.6, 1.5, 6), 7, { smooth: false, shade: null });
+    brass(rrPts(-9.8, -26, 19.6, 5, 1.6, 6), 7, { smooth: false, shade: null });
     ctx.restore();
     ctx.restore();
   }
@@ -2450,7 +2520,7 @@
     const nx = -dy / len, ny = dx / len;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (const [wk, al] of [[1.18, 0.06], [1, 0.08], [0.78, 0.1], [0.5, 0.08]]) {
+    for (const [wk, al] of [[1.15, 0.08], [0.9, 0.1], [0.55, 0.1]]) {
       const hw0 = w * 0.05 * wk, hw1 = (w / 2) * wk;
       const g = ctx.createLinearGradient(x0, y0, x1, y1);
       g.addColorStop(0, rgba(col, al * a * 1.6));
