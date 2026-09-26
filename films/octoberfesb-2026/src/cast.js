@@ -134,6 +134,50 @@
   }
 
   /**
+   * bandShade(ctx, pts, dx, dy, color): the cel crescent of a convex-ish outline without a clip:
+   * the stretch of outline facing away from the light plus the same stretch moved toward the light.
+   * Equal to "the shape minus itself shifted by (dx, dy)" for the tubes it is used on.
+   */
+  function bandShade(ctx, pts, dx, dy, color) {
+    const n = pts.length;
+    let area = 0;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % n];
+      area += a[0] * b[1] - b[0] * a[1];
+    }
+    const sg = area > 0 ? 1 : -1;
+    const ld = hypot(dx, dy) || 1, sx = -dx / ld, sy = -dy / ld;
+    const on = new Array(n);
+    let start = -1;
+    for (let i = 0; i < n; i++) {
+      const a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n];
+      const tx = b[0] - a[0], ty = b[1] - a[1];
+      on[i] = sg * (ty * sx - tx * sy) > 0;
+      if (!on[i] && start < 0) start = i;
+    }
+    if (start < 0) return;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    let run = [];
+    const flush = () => {
+      if (run.length >= 2) {
+        ctx.moveTo(run[0][0], run[0][1]);
+        for (let k = 1; k < run.length; k++) ctx.lineTo(run[k][0], run[k][1]);
+        for (let k = run.length - 1; k >= 0; k--) ctx.lineTo(run[k][0] + dx, run[k][1] + dy);
+        ctx.closePath();
+      }
+      run = [];
+    };
+    for (let j = 1; j <= n; j++) {
+      const i = (start + j) % n;
+      if (on[i]) run.push(pts[i]);
+      else flush();
+    }
+    flush();
+    ctx.fill();
+  }
+
+  /**
    * shapeFig(ctx, pts, o): the figures' twin of FILM.props.shape, with the same options and look
    * (smooth fill, cel tone { color, side, frac } or { color, pts }, gloss [x, y, len, angle, w],
    * outline through lib.inkPath with FILM.props.LINE). Two differences keep a hall of people fast:
@@ -154,7 +198,12 @@
       let sh = o.shade;
       if (sh && !sh.pts) {
         const b0 = bboxOf(pts);
-        if (b0.w < 12 && b0.h < 12) sh = null;
+        if (Math.min(b0.w, b0.h) < 14) sh = null;
+        else if (sh.band) {
+          const f = sh.frac != null ? sh.frac : 0.25;
+          bandShade(ctx, pts, -f * b0.w, -f * b0.h * 0.3, sh.color || SHADE_SKIN);
+          sh = null;
+        }
       }
       if (sh) {
         ctx.save();
@@ -378,7 +427,7 @@
       const bb = bboxOf(q);
       const frac = clamp(((ra + rb) * 0.34 * U) / Math.max(1, bb.w), 0.05, 0.42);
       const o2 = { fill, width: R.ow, seed: R.seed + k, draw: R.draw };
-      if (color !== false) o2.shade = { color: color || SHADE, side: 'right', frac };
+      if (color !== false) o2.shade = { color: color || SHADE, side: 'right', frac, band: true };
       SH(ctx, q, Object.assign(o2, extra));
     };
     /** a whole two-bone limb as one outline (two capsules when it folds tight) */
@@ -391,7 +440,7 @@
       const q = R.M(chain(a, b, c, ra, rb, rc));
       const bb = bboxOf(q);
       const frac = clamp(((ra + rc) * 0.34 * U) / Math.max(1, bb.w), 0.05, 0.42);
-      SH(ctx, q, { fill, width: R.ow, seed: R.seed + k, draw: R.draw, shade: color === false ? null : { color: color || SHADE, side: 'right', frac } });
+      SH(ctx, q, { fill, width: R.ow, seed: R.seed + k, draw: R.draw, shade: color === false ? null : { color: color || SHADE, side: 'right', frac, band: true } });
     };
     R.line = (pts, k, extra) => {
       const q = R.M(pts);
@@ -823,14 +872,18 @@
       dotPx(g, px - pr * 0.36, py - pr * 0.4, pr * 0.34, P.gloss);
       dotPx(g, px + pr * 0.38, py + pr * 0.34, pr * 0.15, P.gloss);
       if (happy) {
-        // cheeks push the lower lid up: a smiling eye
+        // cheeks push the lower lid up: a smiling eye (higher when he laughs)
+        const up = F.chef ? (expr === 'grin' ? 0.32 : 0.16) : 0;
         g.fillStyle = F.skin;
         g.beginPath();
-        g.ellipse(ex, ey + ry * 1.28, rx * 1.4, ry * 0.62, 0, 0, TAU);
+        g.ellipse(ex, ey + ry * (1.28 - up), rx * 1.4, ry * 0.62, 0, 0, TAU);
         g.fill();
       }
       g.restore();
-      if (happy) fInk(g, [[ex - rx * 0.95, ey + ry * 0.55], [ex, ey + ry * 0.7], [ex + rx * 0.95, ey + ry * 0.55]], lw * 0.7, P.outline, seed + 7 + e);
+      if (happy) {
+        const up = F.chef ? (expr === 'grin' ? 0.32 : 0.16) : 0;
+        fInk(g, [[ex - rx * 0.95, ey + ry * (0.55 - up)], [ex, ey + ry * (0.7 - up)], [ex + rx * 0.95, ey + ry * (0.55 - up)]], lw * 0.7, P.outline, seed + 7 + e);
+      }
       // upper lid
       fInk(g, [[ex - rx * 1.08, ey + ry * 0.05], [ex - rx * 0.7, ey - ry * 0.78], [ex, ey - ry * 1.02], [ex + rx * 0.7, ey - ry * 0.78], [ex + rx * 1.08, ey + ry * 0.05]], lw * 1.35, P.outline, seed + 11 + e);
       if (F.lashes) {
@@ -838,7 +891,7 @@
         fInk(g, [[ox, oy], [ox + e * rx * 0.42, oy - ry * 0.34]], lw * 0.9, P.outline, seed + 13 + e);
       }
       if (F.lines) {
-        // crow's feet: warmth, age
+        // crow's feet: warmth, age (the chef shows them when he smiles)
         const ox = ex + e * rx * 1.28;
         fInk(g, [[ox, ey - ry * 0.1], [ox + e * rx * 0.36, ey - ry * 0.3]], lw * 0.55, P.outlineSoft, seed + 17 + e);
         fInk(g, [[ox, ey + ry * 0.2], [ox + e * rx * 0.38, ey + ry * 0.34]], lw * 0.55, P.outlineSoft, seed + 19 + e);
@@ -851,6 +904,7 @@
         const ox = ex + e * bl * 1.12, oy = by + ry * 0.42, ix = ex - e * bl * 0.95, iy = by + ry * 0.05;
         const bp = [[ox, oy - th * 0.3], [ex, by - th * 0.62], [ix, iy - th * 0.55], [ix - e * th * 0.15, iy + th * 0.45], [ex, by + th * 0.38], [ox + e * th * 0.1, oy + th * 0.3]];
         fInk(g, bp, lw * 0.7, P.outline, seed + 23 + e, true, F.brow);
+        if (F.browGrey) fInk(g, [[ex + e * bl * 0.35, by - th * 0.2], [ex + e * bl * 0.62, by - th * 0.05]], lw * 0.4, F.browGrey, seed + 25 + e);
       } else {
         fInk(g, [[ex - bl, by + ry * 0.2], [ex - bl * 0.2, by - ry * 0.22], [ex + bl, by - ry * 0.05]].map((q) => (e < 0 ? q : [2 * ex - q[0], q[1]])), F.browW * hw, F.brow, seed + 23 + e);
       }
@@ -865,7 +919,7 @@
       g.beginPath();
       crTrace(g, [q(0.015, -0.17), q(0.06, -0.02), q(0.085, 0.05), q(0.04, 0.075), q(0.03, -0.02)], true);
       g.fill();
-      fInk(g, [q(0.02, -0.17), q(0.05, -0.03), q(0.08, 0.04), q(0.05, 0.075), q(0.0, 0.08)], lw * 0.95, P.outline, seed + 31);
+      fInk(g, [q(0.015, -0.2), q(0.05, -0.04), q(0.085, 0.04), q(0.055, 0.078), q(0.0, 0.085)], lw * 1.15, P.outline, seed + 31);
       fInk(g, [q(-0.045, 0.035), q(-0.08, 0.055), q(-0.055, 0.08), q(-0.02, 0.078)], lw * 0.85, P.outline, seed + 32);
       dotPx(g, q(-0.01, 0.01)[0], q(-0.01, 0.01)[1], hw * 0.016, P.gloss);
     } else {
@@ -900,8 +954,8 @@
       g.fill();
       g.restore();
     } else {
-      const wide = expr === 'grin' ? 1.18 : 1;
-      const w2 = mw * wide, d = hh * (expr === 'grin' ? 0.12 : 0.1);
+      const wide = expr === 'grin' ? (F.chef ? 1.3 : 1.18) : 1;
+      const w2 = mw * wide, d = hh * (expr === 'grin' ? (F.chef ? 0.15 : 0.12) : 0.1);
       const pts = [[mx - w2, my - hh * 0.03], [mx - w2 * 0.5, my - hh * 0.005], [mx, my], [mx + w2 * 0.5, my - hh * 0.005], [mx + w2, my - hh * 0.03], [mx + w2 * 0.62, my + d * 0.72], [mx, my + d], [mx - w2 * 0.62, my + d * 0.72]];
       g.save();
       g.beginPath();
@@ -1279,10 +1333,12 @@
     if (chef) {
       // a short, neatly trimmed beard along the jaw and chin (about 12 px at an 800 px figure)
       R.shaded(HM(CHEF_BEARD, true), P.beard, 330, SHADE, 0.14);
-      const hl = P.beardLight || P.beard;
-      R.line(HM([[-0.36, 0.38], [-0.26, 0.47]], true), 331, { color: hl, width: R.dw * 1.3 });
-      R.line(HM([[-0.1, 0.56], [0.0, 0.6]], true), 332, { color: hl, width: R.dw * 1.3 });
-      R.line(HM([[-0.46, 0.16], [-0.44, 0.27]], true), 333, { color: hl, width: R.dw * 1.2 });
+      const hl = P.beardLight || P.beard, gr = P.beardGrey;
+      R.line(HM([[-0.38, 0.36], [-0.28, 0.45]], true), 331, { color: hl, width: R.dw * 1.4 });
+      R.line(HM([[-0.07, 0.56], [-0.01, 0.6]], true), 332, { color: gr, width: R.dw * 0.9 });
+      R.line(HM([[0.06, 0.54], [0.11, 0.58]], true), 333, { color: gr, width: R.dw * 0.9 });
+      R.line(HM([[-0.475, 0.12], [-0.465, 0.2]], true), 334, { color: gr, width: R.dw * 0.8 });
+      R.line(HM([[0.475, 0.13], [0.465, 0.21]], true), 335, { color: gr, width: R.dw * 0.8 });
     } else if (st.spec && st.spec.beard === 'stubble') {
       R.fill(HM([[-0.49, 0.04], [-0.47, 0.28], [-0.34, 0.47], [-0.16, 0.55], [0, 0.57], [0.16, 0.55], [0.34, 0.47], [0.47, 0.28], [0.49, 0.04], [0.38, 0.2], [0.2, 0.2], [0.12, 0.33], [0, 0.35], [-0.12, 0.33], [-0.2, 0.2], [-0.38, 0.2]], true), L.rgba(hairOf(st.hairColor), 0.24));
     } else if (st.spec && st.spec.beard === 'short') {
@@ -1802,24 +1858,25 @@
     const k = clamp(num(pose.k, 1));
     const t = Math.max(0, num(pose.t, 0));
     const pe = pelvisY(B);
-    const stand = { py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], aL: [0.2, 0.2, 0], aR: [0.2, 0.2, 0], hands: ['open', 'open'], expr: 'half' };
+    // at rest he is already about to dance: weight on the toes, shoulders loose, hands up and open
+    const stand = { py: 1.4, px: 1.1, tilt: -0.06, lean: -0.03, shL: -0.6, shR: 0.3, fL: [-7.5, 1.3, 0.4], fR: [7.8, 0, 0], kneeL: -1, aL: [0.5, 1.75, 0.3, 0.6], aR: [0.95, 0.8, 0.3, 1], hands: ['open', 'open'], head: 0.07, expr: 'smile' };
     const R0 = (q) => resolve(B, q);
     const g = mugGrip(mh, false, 0);
     const gu = [g[0] / (B._U || 1), g[1] / (B._U || 1)];
     let p;
     switch (name) {
       case 'grin':
-        p = R0({ py: 0.4, fL: [-9, 0, 0], fR: [9, 0, 0], aL: [0.82, -1.78, 0.3], aR: [0.82, -1.78, 0.3], hands: ['fist', 'fist'], head: 0.07, expr: 'grin' });
+        p = R0({ py: 1.0, px: -1, tilt: 0.05, fL: [-9, 0, 0], fR: [9, 1.2, 0.4], kneeR: -1, shR: -0.8, aL: [0.82, -1.78, 0.3], aR: [1.05, 1.75, 0.2, 0.9], hands: ['fist', 'thumb'], head: 0.1, expr: 'grin' });
         break;
       case 'armsCrossed':
       case 'nod': {
-        p = R0({ py: 0.4, fL: [-9.5, 0, 0], fR: [9.5, 0, 0], shR: -1.6, aL: [-0.1, -1.5, 0.1, 1.05], aR: [-0.06, -1.55, -0.1, 1.05], hands: ['fist', 'fist'], head: -0.05, expr: 'grin' });
+        p = R0({ py: 0.9, px: 1.2, tilt: -0.06, fL: [-9.5, 1.0, 0.4], fR: [9.5, 0, 0], kneeL: -1, shR: -1.6, aL: [-0.1, -1.5, 0.1, 1.05], aR: [-0.06, -1.55, -0.1, 1.05], hands: ['fist', 'fist'], head: -0.09, expr: 'grin' });
         if (name === 'nod') p.nod = sin(k * PI);
         break;
       }
       case 'tieBandana': {
         const hk = [
-          [0, R0(Object.assign({}, stand, { ikR: [11.5, pe + 2, 1, 0.2], hands: ['open', 'fist'], expr: 'half' }))],
+          [0, R0(Object.assign({}, stand, { ikR: [11.5, pe + 2, 1, 0.2], hands: ['open', 'fist'], expr: 'smile' }))],
           [0.25, R0({ py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], ikL: [-9, pe - 57, 1, 0.8], ikR: [9, pe - 57, 1, 0.8], hands: ['fist', 'fist'], head: 0, expr: 'grin' })],
           [0.5, R0({ py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], ikL: [-4.5, pe - 47.5, 1, -0.4], ikR: [4.5, pe - 47.5, 1, -0.4], hands: ['fist', 'fist'], head: 0.06, expr: 'smile' })],
           [0.75, R0({ py: 0.6, fL: [-7.5, 0, 0], fR: [7.5, 0, 0], ikL: [-8, pe - 45, 1, -0.2], ikR: [3, pe - 49, 1, -0.6], hands: ['fist', 'fist'], head: -0.08, expr: 'grin', tails: 0.4 })],
@@ -1874,7 +1931,7 @@
     [0.44, 0.1], [0.4, 0.24], [0.32, 0.33], [0.23, 0.37], [0.19, 0.345], [0.15, 0.43], [0.1, 0.475], [0, 0.49], [-0.1, 0.475], [-0.15, 0.43], [-0.19, 0.345], [-0.23, 0.37], [-0.32, 0.33], [-0.4, 0.24], [-0.44, 0.1],
   ];
   const CHEF_FACE = {
-    eyeY: 0.0, eyeX: 0.2, eyeRx: 0.084, eyeRy: 0.072, pupil: 0.054, lashes: false, brow: P.chefBrow || P.beard, browW: 0.075, browLift: 0.03,
+    eyeY: 0.0, eyeX: 0.2, eyeRx: 0.084, eyeRy: 0.074, pupil: 0.054, lashes: false, brow: P.chefBrow || P.beard, browW: 0.075, browLift: 0.055, browGrey: P.beardGrey,
     iris: L.mix(P.woodMid, P.woodDeep, 0.35), forehead: true,
     mouthY: 0.37, mouthW: 0.15, skin: P.chefSkin, glasses: false, lines: true, blush: L.rgba(P.confettiD, 0.18), chef: true,
     moustache: { color: P.beard, trim: true }, seed: 77,
@@ -2008,8 +2065,9 @@
     const band = [...arc(51, 72, -72, 18, false), ...arc(44, 56, -76, 18, true)];
     R.shaded(band, P.beard, 2, SHADE, 0.14);
     const hl = P.beardLight || P.beard;
-    R.line([[-26, -16], [-18, -9]], 3, { color: hl, width: R.dw * 1.4 });
-    R.line([[-6, -8], [4, -6]], 4, { color: hl, width: R.dw * 1.4 });
+    R.line([[-30, -18], [-21, -10]], 3, { color: hl, width: R.dw * 1.6 });
+    R.line([[-6, -9], [1, -6]], 4, { color: P.beardGrey, width: R.dw });
+    R.line([[8, -8], [14, -11]], 5, { color: P.beardGrey, width: R.dw });
     R.gloss([-30, -40], [-22, -30], 1.4, 0.4);
     ctx.restore();
   }
