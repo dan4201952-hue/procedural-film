@@ -91,41 +91,13 @@
     FILM.props.fesbLogo(ctx, x, top + h * 0.44, w * 0.46, { outline: true });
   }
 
-  // --- a cached sprite for a clapping waitress: the clap cycle (0.5 s) is quantised on twos (per
-  // scene-anatomy: characters animate on twos anyway), so there are only 6 distinct poses per cycle
-  // to paint — every other frame is then a single drawImage instead of a full figure redraw. --------
-  function clapSprite(ctx, L, CAST, who, x, y, h, Tg) {
-    const S = FILM.S || 1;
-    const phase = Math.round(L.onTwos(Tg % 0.5) * 12) % 6; // 6 steps/cycle at 12 fps
-    const bw = h * 1.6, bh = h * 1.15;
-    const key = ['salsa-shirts-clap', who, phase, Math.round(h * 10), S].join('|');
-    const c = L.cached(key, () => {
-      const cv = FILM.makeCanvas(Math.max(1, Math.round(bw * S)), Math.max(1, Math.round(bh * S)));
-      const g = cv.getContext('2d');
-      g.scale(S, S);
-      CAST.waitress(g, bw / 2, bh, h, { name: 'clap', t: phase / 12 }, { who, carry: 'none' });
-      return cv;
-    });
-    ctx.drawImage(c, x - bw / 2, y - bh, bw, bh);
-  }
-
-  // --- a cached sprite for an idling teammate (o.upper, 'stand' — a pure function of spec.id, so
-  // it paints once per (spec, h, render scale) and every later idle frame is a single drawImage;
-  // this is what keeps the busiest frame in the film inside budget). Only the few teammates mid-catch
-  // at any moment fall back to a live FILM.cast.person draw. -----------------------------------------
-  function idleSprite(ctx, L, CAST, spec, x, y, h) {
-    const S = FILM.S || 1;
-    const bw = h * 1.3, bh = h * 1.12;
-    const key = ['salsa-shirts-idle', spec.id, Math.round(h * 10), S].join('|');
-    const c = L.cached(key, () => {
-      const cv = FILM.makeCanvas(Math.max(1, Math.round(bw * S)), Math.max(1, Math.round(bh * S)));
-      const g = cv.getContext('2d');
-      g.scale(S, S);
-      CAST.person(g, spec, bw / 2, bh, h, { name: 'stand' }, { upper: true });
-      return cv;
-    });
-    ctx.drawImage(c, x - bw / 2, y - bh, bw, bh);
-  }
+  // Note: FILM.cast.person/waitress/chef are NOT sprite-cached here, even though they are the
+  // costliest draws. Their ink wobble defaults to the *ambient* lib.boil(lib.T) whenever a call
+  // does not pin an explicit boil (and person/waitress/chef do not expose one to pin) — caching
+  // their pixels across frames would bake in whichever frame's ambient time happened to build the
+  // cache first, which the determinism pass (cold vs. warm-forward vs. shuffled) catches as a
+  // mismatch. Only FILM.props functions thread boil explicitly (see cachedLayer below), so only
+  // those are safe to cache across frames.
 
   // --- a cached world-space layer: paints `make(g, boil)` into an offscreen canvas spanning world
   // x [x0,x1) once per (name, boil-phase, render scale), then every later frame is one drawImage.
@@ -193,18 +165,18 @@
         PROPS.table(g, TABLE_A_X, TABLE_A_Y, TABLE_A_W, { depth: 24, legs: TABLE_A_LEGS, bench: 'front', seed: sd('tblA'), boil: b });
       });
 
-      // 3. the four waitresses at the back, clapping (cached: see clapSprite) --------------------
+      // 3. the four waitresses at the back, clapping --------------------------------------------
       const WHO = ['liesl', 'resi', 'vroni', 'gretl'];
       const WX = [460, 760, 1180, 1470];
-      for (let i = 0; i < 4; i++) clapSprite(ctx, L, CAST, WHO[i], WX[i], 430, 165, Tg);
+      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], 430, 165, { name: 'clap', t: Tg }, { who: WHO[i], carry: 'none' });
 
-      // helper: draws a seated teammate — the cached idle sprite behind the table (o.upper, both
-      // benches: cheap, and the documented idiom for "people behind a table") until their catch
-      // window brings their arms up into a live-drawn hug, then back to the cached sprite.
+      // helper: draws a seated teammate behind the table (o.upper: cheap, and the documented idiom
+      // for "people behind a table") — idle until their catch window brings their arms up into a
+      // hug, then back to idle for the rest of the shot.
       function drawSeat(s, floorY, h) {
         const cEnd = catchTime(s.throwI), cStart = cEnd - CATCH_DUR, cSettled = cEnd + CATCH_SETTLE;
         if (t < cStart || t >= cSettled) {
-          idleSprite(ctx, L, CAST, s.spec, s.x, floorY, h);
+          CAST.person(ctx, s.spec, s.x, floorY, h, { name: 'stand' }, { upper: true });
         } else {
           const k = clamp01((t - cStart) / CATCH_DUR);
           CAST.person(ctx, s.spec, s.x, floorY, h, { name: 'catch', k }, { upper: true, shirt: s.design });
