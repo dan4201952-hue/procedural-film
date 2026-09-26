@@ -889,8 +889,9 @@
     const a = l2(J.chest, J.head, -0.2), b = l2(J.chest, J.head, 0.72);
     R.tube([a, b], neckProf(B), 0, 1, ['open', 'round'], st.skin, 20, { warm: true, body: J.chest });
     const T = tone(st.skin, true);
-    R.soft(l2(J.chest, J.head, 0.52), B.neckR * 1.25, 1.9, J.headAng, T.deep, 0.55);
-    R.soft(l2(J.chest, J.head, 0.06), B.neckR * 1.4, 1.4, J.headAng, T.deep, 0.35);
+    const w = st.kind === 'waitress';
+    R.soft(l2(J.chest, J.head, 0.52), B.neckR * 1.25, 1.9, J.headAng, w ? T.mid : T.deep, w ? 0.35 : 0.55);
+    R.soft(l2(J.chest, J.head, 0.06), B.neckR * 1.4, 1.4, J.headAng, w ? T.mid : T.deep, w ? 0.2 : 0.35);
   }
 
   function drawSkirt(R, B, J, p, st, tf) {
@@ -1248,7 +1249,12 @@
   function skullPts(kind, build) {
     let jw = 0.43, jy = 0.3, chw = 0.15, ch = 0.52, tw = 0.47;
     if (kind === 'chef') (jw = 0.42), (jy = 0.31), (chw = 0.16), (tw = 0.465);
-    else if (kind === 'waitress') (jw = 0.4), (jy = 0.25), (chw = 0.18), (ch = 0.51);
+    else if (kind === 'waitress') {
+      const half = [[0, -0.5], [0.25, -0.47], [0.41, -0.36], [0.48, -0.2], [0.495, -0.02], [0.47, 0.14], [0.4, 0.28], [0.29, 0.4], [0.15, 0.48], [0, 0.505]];
+      const out = half.slice();
+      for (let i = half.length - 2; i >= 1; i--) out.push([-half[i][0], half[i][1]]);
+      return out;
+    }
     else if (build === 'stocky' || build === 'heavy') (jw = 0.475), (jy = 0.33), (chw = 0.2), (ch = 0.53);
     else if (build === 'slim' || build === 'lanky') (jw = 0.395), (jy = 0.29), (chw = 0.13), (ch = 0.535);
     const half = [[0, -0.5], [0.24, -0.47], [0.4, -0.37], [tw, -0.22], [0.5, -0.04], [0.49, 0.1], [jw, jy], [0.3, 0.44], [chw, ch - 0.015], [0, ch]];
@@ -1338,9 +1344,11 @@
     const W = (xn, yn) => [X(xn) * hw, yn * hh];
     const QM = (list) => list.map((q) => Q(q[0], q[1]));
     const WM = (list) => list.map((q) => W(q[0], q[1]));
-    const ow = H.ow, dl = Math.max(0.7, hw * 0.017);
     const sk = tone(H.skin, true);
     const chef = H.kind === 'chef', wt = H.kind === 'waitress';
+    // the women's faces take a thinner, warmer outline (about 60 % of the body line)
+    const ow = wt ? H.ow * 0.6 : H.ow, dl = Math.max(0.7, hw * 0.017);
+    const oc = wt ? L.mix(P.outline, sk.deep, 0.4) : P.outline;
     const seed = 5000 + (H.seed || 0);
     const hc = hairOf(H.hairColor);
     const hT = tone(hc, true);
@@ -1363,7 +1371,7 @@
       const ek = chef ? 0.78 : 1;
       const ear = [[-0.02, -0.12], [0.05, -0.13], [0.092, -0.08], [0.098, 0.0], [0.072, 0.085], [0.03, 0.13], [-0.01, 0.12]].map((q) => [(ex + e * q[0] * ek) * hw, (0.08 + q[1]) * hh]);
       fillPts(g, ear, linRampPts(g, ear, sk, 0.12));
-      fInk(g, ear, ow * 0.85, P.outline, seed + 3 + e, true);
+      fInk(g, ear, ow * 0.85, oc, seed + 3 + e, true);
       if (!back) {
         strokeCurve(g, [(ex + e * 0.012) * hw, (0.08 - 0.075) * hh], [(ex + e * 0.07) * hw, 0.02 * hh], [(ex + e * 0.045) * hw, (0.08 + 0.065) * hh], dl * 0.9, sk.deep, 0.7);
         soft(g, (ex + e * 0.035) * hw, 0.09 * hh, 0.025 * hw, 0.045 * hh, 0, sk.deep, 0.45);
@@ -1381,17 +1389,18 @@
     g.clip();
     if (!back) {
       const eyeY = H.eyeY * hh;
-      soft(g, X(0.4) * hw, 0.08 * hh, 0.2 * hw, 0.42 * hh, 0, sk.core, 0.35);
-      soft(g, X(0.2) * hw, 0.43 * hh, 0.34 * hw, 0.12 * hh, -0.3, sk.core, 0.35);
-      soft(g, X(-0.26) * hw, 0.1 * hh, 0.11 * hw, 0.065 * hh, 0, P.gloss, 0.16);
-      for (const e of [-1, 1]) soft(g, X(e * 0.2) * hw, eyeY, 0.14 * hw, 0.07 * hh, 0, sk.mid, 0.3);
-      for (const e of [-1, 1]) soft(g, X(e * 0.27) * hw, 0.17 * hh, 0.09 * hw, 0.05 * hh, 0, P.confettiD, wt ? 0.2 : 0.06);
+      soft(g, X(0.4) * hw, 0.08 * hh, 0.2 * hw, 0.42 * hh, 0, sk.core, wt ? 0.16 : 0.35);
+      if (!wt) soft(g, X(0.2) * hw, 0.43 * hh, 0.34 * hw, 0.12 * hh, -0.3, sk.core, 0.35);
+      soft(g, X(-0.26) * hw, 0.1 * hh, 0.11 * hw, 0.065 * hh, 0, P.gloss, wt ? 0.24 : 0.16);
+      for (const e of [-1, 1]) soft(g, X(e * 0.2) * hw, eyeY, 0.14 * hw, 0.07 * hh, 0, sk.mid, wt ? 0.14 : 0.3);
+      for (const e of [-1, 1]) soft(g, X(e * 0.28) * hw, 0.17 * hh, (wt ? 0.12 : 0.09) * hw, (wt ? 0.07 : 0.05) * hh, 0, P.confettiD, wt ? 0.26 : 0.06);
+      if (wt) soft(g, 0, -0.28 * hh, 0.22 * hw, 0.1 * hh, 0, P.gloss, 0.14);
       if (H.build === 'heavy' || H.build === 'stocky') soft(g, 0, 0.5 * hh, 0.22 * hw, 0.05 * hh, 0, sk.core, 0.3);
     } else {
       soft(g, 0.25 * hw, 0.1 * hh, 0.28 * hw, 0.45 * hh, 0, sk.core, 0.3);
     }
     g.restore();
-    fInk(g, skull, ow, P.outline, seed + 5, true);
+    fInk(g, skull, ow, oc, seed + 5, true);
 
     if (back) {
       if (chef) return paintChefBack(g, hw, hh, H, Q, QM, ow, dl, seed);
@@ -1450,7 +1459,7 @@
       const ex = 0.5 * sin(th) * hw;
       const ew = F.eyeW * hw * (0.45 + 0.55 * vis), eh = F.eyeH * hh;
       eyes.push({ e, ex, ew, eh });
-      paintEye(g, e, ex, eyeY, ew, eh, { sm, look: F.look || 0, iris: F.iris, lw: ow * 0.75, dl, female: wt, crow: (F.lines || chef) && sm > 0.3, seed: seed + 20 + e * 5, skin: sk });
+      paintEye(g, e, ex, eyeY, ew, eh, { sm, look: F.look || 0, iris: F.iris, lw: wt ? H.ow * 0.72 : ow * 0.75, dl, female: wt, crow: (F.lines || chef) && sm > 0.3, seed: seed + 20 + e * 5, skin: sk });
       const lift = (expr === 'grin' ? 0.03 : expr === 'o' ? 0.04 : 0.012) + F.browLift;
       paintBrow(g, e, ex, eyeY - eh - lift * hh, ew, hh, F, seed + 30 + e);
     }
@@ -1460,8 +1469,8 @@
     // mouth
     const mx = X(0) * hw * 0.98, my = F.mouthY * hh;
     const mw = F.mouthW * hw * (0.55 + 0.45 * cos(phi));
-    if (sm > 0.25) for (const e of [-1, 1]) fInk(g, [[nx + e * F.noseW * hw * 1.1, ny + 0.015 * hh], [mx + e * (mw + 0.035 * hw), my - 0.02 * hh], [mx + e * (mw + 0.02 * hw), my + 0.04 * hh]], dl * 0.8, rgba(P.outlineSoft, 0.5), seed + 45 + e);
-    paintMouth(g, mx, my, mw, hh, hw, expr, F, sk, ow, dl, seed + 50);
+    if (sm > 0.25 && !wt) for (const e of [-1, 1]) fInk(g, [[nx + e * F.noseW * hw * 1.1, ny + 0.015 * hh], [mx + e * (mw + 0.035 * hw), my - 0.02 * hh], [mx + e * (mw + 0.02 * hw), my + 0.04 * hh]], dl * 0.8, rgba(P.outlineSoft, 0.5), seed + 45 + e);
+    paintMouth(g, mx, my, mw, hh, hw, expr, Object.assign({ female: wt, oc }, F), sk, ow, dl, seed + 50);
     if (chef) paintMoustache(g, mx, my, mw, hw, hh, P.beard, P.beardLight || P.beard, ow, dl, seed + 60, true);
     else if (F.beard === 'moustache' || F.beard === 'short') paintMoustache(g, mx, my, mw, hw, hh, mix(hc, F.skin, F.beard === 'short' ? 0.12 : 0), hT.hi, ow, dl, seed + 60, false);
     // 5. hair, bandana, glasses
@@ -1525,8 +1534,8 @@
   }
 
   function paintEye(g, e, cx, cy, ew, eh, F) {
-    const inner = [cx - e * ew, cy + 0.08 * eh], outer = [cx + e * ew, cy - 0.04 * eh];
-    const lo = 0.78 - F.sm * 0.6;
+    const inner = [cx - e * ew, cy + 0.08 * eh], outer = [cx + e * ew, cy - (F.female ? 0.22 : 0.04) * eh];
+    const lo = F.female ? 0.82 - F.sm * 0.35 : 0.78 - F.sm * 0.6;
     const upper = [inner, [cx - e * 0.5 * ew, cy - 0.78 * eh], [cx + e * 0.08 * ew, cy - eh], [cx + e * 0.62 * ew, cy - 0.72 * eh], outer];
     const lower = [[cx + e * 0.5 * ew, cy + (lo - 0.12) * eh], [cx - e * 0.12 * ew, cy + lo * eh], [cx - e * 0.66 * ew, cy + lo * 0.72 * eh]];
     const shape = [...upper, ...lower];
@@ -1536,7 +1545,7 @@
     g.fillStyle = COL.eyeWhite;
     g.fill();
     g.clip();
-    const ir = eh * 0.95, ix = cx + F.look * ew * 0.28 - e * ew * 0.04, iy = cy + 0.06 * eh;
+    const ir = eh * (F.female ? 1.0 : 0.95), ix = cx + F.look * ew * 0.28 - e * ew * 0.04, iy = cy + 0.06 * eh;
     const ig = g.createRadialGradient(ix - ir * 0.15, iy + ir * 0.3, 0, ix, iy, ir);
     ig.addColorStop(0, mix(F.iris, P.gloss, 0.35));
     ig.addColorStop(0.62, F.iris);
@@ -1546,8 +1555,8 @@
     g.arc(ix, iy, ir, 0, TAU);
     g.fill();
     dotPx(g, ix, iy, ir * 0.44, P.outline);
-    dotPx(g, ix - ir * 0.34, iy - ir * 0.36, ir * 0.27, P.gloss);
-    dotPx(g, ix + ir * 0.3, iy + ir * 0.3, ir * 0.1, P.gloss);
+    dotPx(g, ix - ir * 0.34, iy - ir * 0.36, ir * (F.female ? 0.33 : 0.27), P.gloss);
+    dotPx(g, ix + ir * 0.3, iy + ir * 0.3, ir * (F.female ? 0.14 : 0.1), P.gloss);
     const ls = g.createLinearGradient(0, cy - eh, 0, cy + eh * 0.15);
     ls.addColorStop(0, rgba(P.outline, 0.45));
     ls.addColorStop(1, rgba(P.outline, 0));
@@ -1557,8 +1566,15 @@
     fInk(g, upper, F.lw, P.outline, F.seed, false);
     fInk(g, [outer, ...lower.slice(0, 2)], F.dl * 0.8, rgba(P.outlineSoft, 0.7), F.seed + 1, false);
     fInk(g, [[cx - e * 0.4 * ew, cy - 1.32 * eh], [cx + e * 0.15 * ew, cy - 1.55 * eh], [cx + e * 0.75 * ew, cy - 1.08 * eh]], F.dl * 0.8, rgba(P.outlineSoft, 0.55), F.seed + 2, false);
-    if (F.female) fInk(g, [outer, [cx + e * 1.22 * ew, cy - 0.32 * eh]], F.lw * 0.8, P.outline, F.seed + 3, false);
-    if (F.sm > 0.3) fInk(g, [[cx - e * 0.55 * ew, cy + (lo + 0.5) * eh], [cx + e * 0.1 * ew, cy + (lo + 0.66) * eh], [cx + e * 0.72 * ew, cy + (lo + 0.38) * eh]], F.dl * 0.8, rgba(P.outlineSoft, 0.55), F.seed + 4, false);
+    if (F.female) {
+      // defined upper lashes: a flick at the outer corner and three short lashes along the lid
+      fInk(g, [outer, [cx + e * 1.25 * ew, cy - 0.55 * eh]], F.lw * 0.9, P.outline, F.seed + 3, false);
+      for (let i = 0; i < 3; i++) {
+        const k = 0.25 + i * 0.22, bx = cx + e * lerp(-0.1, 0.85, k) * ew, by = cy - lerp(1.0, 0.55, k) * eh;
+        fInk(g, [[bx, by], [bx + e * 0.16 * ew, by - (0.48 - i * 0.05) * eh]], F.lw * 0.78, P.outline, F.seed + 8 + i, false);
+      }
+    }
+    if (F.sm > 0.3 && !F.female) fInk(g, [[cx - e * 0.55 * ew, cy + (lo + 0.5) * eh], [cx + e * 0.1 * ew, cy + (lo + 0.66) * eh], [cx + e * 0.72 * ew, cy + (lo + 0.38) * eh]], F.dl * 0.8, rgba(P.outlineSoft, 0.55), F.seed + 4, false);
     if (F.crow) {
       const ox = cx + e * ew * 1.12;
       fInk(g, [[ox, cy - 0.1 * eh], [ox + e * ew * 0.3, cy - 0.35 * eh]], F.dl * 0.7, rgba(P.outlineSoft, 0.7), F.seed + 5, false);
@@ -1581,11 +1597,19 @@
       const x = X(k), y = lerp(by - t * 0.3 - arch * (1 - Math.abs(k - 0.5)), by + t * 0.3, r());
       strokeCurve(g, [x, y], [x + e * t * 0.6, y - t * 0.2], [x + e * t * 1.1, y - t * 0.05], Math.max(0.6, t * 0.18), i < 2 && F.browGrey ? F.browGrey : mix(F.brow, P.gloss, 0.25), 0.55);
     }
-    fInk(g, pts, Math.max(0.6, t * 0.12), mix(F.brow, P.outline, 0.5), seed + 3, true, 0.8);
+    if (F.kind !== 'waitress') fInk(g, pts, Math.max(0.6, t * 0.12), mix(F.brow, P.outline, 0.5), seed + 3, true, 0.8);
   }
 
   function paintNose(g, nx, ey, ny, hw, hh, F, sk, dl, seed) {
     const w = F.noseW * hw;
+    if (F.kind === 'waitress') {
+      soft(g, nx + 0.012 * hw, ny + 0.05 * hh, w * 0.9, 0.02 * hh, 0, sk.core, 0.35);
+      soft(g, nx + w * 0.55, ny - 0.03 * hh, w * 0.3, 0.06 * hh, 0, sk.core, 0.22);
+      soft(g, nx - 0.01 * hw, ny - 0.005 * hh, w * 0.45, 0.022 * hh, 0, P.gloss, 0.6);
+      for (const e of [-1, 1]) soft(g, nx + e * w * 0.42, ny + 0.034 * hh, w * 0.16, 0.009 * hh, 0, sk.deep, 0.55);
+      fInk(g, [[nx + w * 0.2, ny + 0.05 * hh], [nx + w * 0.75, ny + 0.035 * hh], [nx + w * 0.85, ny + 0.0]], dl * 0.8, rgba(sk.deep, 0.75), seed + 1, false);
+      return;
+    }
     const top = ey + 0.03 * hh;
     const sh = [[nx + 0.012 * hw, top], [nx + w * 0.55, ny - 0.035 * hh], [nx + w * 0.85, ny + 0.02 * hh], [nx + w * 0.25, ny + 0.035 * hh], [nx - 0.002 * hw, ny - 0.04 * hh]];
     const strong = !!F.noseStrong;
@@ -1607,7 +1631,9 @@
   function paintMouth(g, mx, my, mw, hh, hw, expr, F, sk, ow, dl, seed) {
     const lip = F.lip;
     const litLip = mix(lip, P.gloss, 0.22);
-    const upperLip = (y0, w, lift) => [[mx - w * 1.02, y0 + lift], [mx - w * 0.5, y0 - 0.02 * hh], [mx - w * 0.08, y0 - 0.013 * hh], [mx, y0 - 0.007 * hh], [mx + w * 0.08, y0 - 0.013 * hh], [mx + w * 0.5, y0 - 0.02 * hh], [mx + w * 1.02, y0 + lift], [mx + w * 0.5, y0 + 0.002 * hh], [mx, y0 + 0.006 * hh], [mx - w * 0.5, y0 + 0.002 * hh]];
+    const lf = F.female ? 1.7 : 1;
+    const mo = F.female ? mix(P.outline, P.dirndlSkirt, 0.45) : P.outline;
+    const upperLip = (y0, w, lift) => [[mx - w * 1.02, y0 + lift], [mx - w * 0.5, y0 - 0.02 * hh * lf], [mx - w * 0.08, y0 - 0.013 * hh * lf], [mx, y0 - 0.007 * hh * lf], [mx + w * 0.08, y0 - 0.013 * hh * lf], [mx + w * 0.5, y0 - 0.02 * hh * lf], [mx + w * 1.02, y0 + lift], [mx + w * 0.5, y0 + 0.002 * hh], [mx, y0 + 0.006 * hh], [mx - w * 0.5, y0 + 0.002 * hh]];
     if (expr === 'calm') {
       fillPts(g, upperLip(my, mw * 0.95, -0.012 * hh), rgba(lip, 0.7));
       const lower = [[mx - mw * 0.62, my + 0.012 * hh], [mx, my + 0.05 * hh], [mx + mw * 0.62, my + 0.012 * hh], [mx, my + 0.018 * hh]];
@@ -1651,11 +1677,11 @@
       g.stroke();
     }
     g.restore();
-    const lower = [[mx - w * 0.72, my + d * 0.62], [mx, my + d], [mx + w * 0.72, my + d * 0.62], [mx + w * 0.58, my + d * 0.62 + 0.03 * hh], [mx, my + d + 0.032 * hh], [mx - w * 0.58, my + d * 0.62 + 0.03 * hh]];
+    const lower = [[mx - w * 0.72, my + d * 0.62], [mx, my + d], [mx + w * 0.72, my + d * 0.62], [mx + w * 0.58, my + d * 0.62 + 0.03 * hh * lf], [mx, my + d + 0.032 * hh * lf], [mx - w * 0.58, my + d * 0.62 + 0.03 * hh * lf]];
     if (expr !== 'o') fillPts(g, lower, litLip);
-    soft(g, mx - w * 0.15, my + d + 0.014 * hh, w * 0.2, 0.008 * hh, 0, P.gloss, 0.5);
-    fInk(g, opening, ow * 0.62, P.outline, seed, true);
-    soft(g, mx, my + d + 0.06 * hh, w * 0.45, 0.02 * hh, 0, sk.core, 0.3);
+    soft(g, mx - w * 0.15, my + d + 0.014 * hh * lf, w * (F.female ? 0.28 : 0.2), 0.008 * hh * lf, 0, P.gloss, F.female ? 0.75 : 0.5);
+    fInk(g, opening, ow * (F.female ? 0.8 : 0.62), mo, seed, true);
+    soft(g, mx, my + d + 0.06 * hh, w * 0.45, 0.02 * hh, 0, sk.core, F.female ? 0.15 : 0.3);
   }
 
   function paintMoustache(g, mx, my, mw, hw, hh, color, lit, ow, dl, seed, chef) {
@@ -1803,9 +1829,10 @@
   function paintWaitressHair(g, hw, hh, H, hT, W, WM, ow, dl, seed, phi) {
     const hp = WM(HAIR_FRONT.part);
     fillPts(g, hp, linRampPts(g, hp, hT, 0.07));
-    strands(g, hp, 22, 0.14 * hw, (x) => (x < 0 ? PI * 0.72 : PI * 0.28), hT.hi, hT.deep, dl * 0.9, seed + 130);
-    soft(g, W(-0.2, 0)[0], -0.45 * hh, 0.16 * hw, 0.05 * hh, -0.3, P.gloss, 0.3);
-    fInk(g, hp, ow, P.outline, seed + 131, true);
+    strands(g, hp, 34, 0.15 * hw, (x) => (x < 0 ? PI * 0.72 : PI * 0.28), hT.hi, hT.deep, dl * 0.9, seed + 130);
+    soft(g, W(-0.2, 0)[0], -0.45 * hh, 0.2 * hw, 0.055 * hh, -0.3, P.gloss, 0.5);
+    soft(g, W(-0.24, 0)[0], -0.47 * hh, 0.07 * hw, 0.02 * hh, -0.3, P.gloss, 0.7);
+    fInk(g, hp, H.ow * 0.66, L.mix(P.outline, hT.deep, 0.3), seed + 131, true);
     if (H.style === 'crown') {
       for (let i = 0; i < 10; i++) {
         const a = PI + 0.35 + (i / 9) * (PI - 0.7);
@@ -2594,8 +2621,8 @@
     const skin = skinOf(Wd.skin);
     return {
       kind: 'waitress', who, style: Wd.style, flower: Wd.flower, ribbon: Wd.ribbon, hairColor: Wd.hairColor, skin, build: 'full',
-      eyeY: 0.02, eyeX: 0.2, eyeW: 0.108, eyeH: 0.054, iris: IRIS[Wd.iris] || IRIS.blue, browT: 0.026, browArch: 0.02, browLift: 0.08,
-      brow: browOf(Wd.hairColor), noseY: 0.2, noseW: 0.07, mouthY: 0.315, mouthW: 0.15, lip: L.mix(skin, P.confettiD, 0.42), lines: false, forehead: false,
+      eyeY: 0.03, eyeX: 0.205, eyeW: 0.122, eyeH: 0.066, iris: IRIS[Wd.iris] || IRIS.blue, browT: 0.021, browArch: 0.032, browLift: 0.068,
+      brow: L.mix(browOf(Wd.hairColor), P.outlineSoft, 0.2), noseY: 0.2, noseW: 0.054, mouthY: 0.31, mouthW: 0.148, lip: L.mix(L.mix(skin, P.confettiD, 0.55), P.dirndlSkirt, 0.12), lines: false, forehead: false,
       expr, look, seed: L.hash('w', who) % 1000,
     };
   }
@@ -2662,7 +2689,7 @@
     p.look = 0.3;
     const J = solve(B, p);
     const R = makeRig(ctx, x, y, hh, { line: o.line, draw: o.draw, flip }, 'waitress-' + who);
-    const expr = 'grin';
+    const expr = 'smile';
     const H = waitressHead(who, Wd, expr, 0.3);
     const st = {
       kind: 'waitress', who, skin: skinOf(Wd.skin), top: 'blouse', neck: Wd.neck, topColor: P.shirtWhite, sleeve: 'puff', sleeveColor: P.shirtWhite,

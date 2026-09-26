@@ -20,7 +20,7 @@ FILM.scene({
       C.waitress(ctx, x, y, h, pose, Object.assign({ who, line: 'hero' }, o));
       label(name, x, 962);
     }
-    // bust close-ups (the same drawing at 900 px)
+    // face close-ups (the same drawing at 1500 px)
     ['liesl', 'resi', 'vroni', 'gretl'].forEach((who, i) => {
       const x0 = 40 + i * 250;
       ctx.save();
@@ -30,7 +30,7 @@ FILM.scene({
       ctx.fill();
       ctx.clip();
       const tall = { liesl: 1, resi: 0.96, vroni: 0.99, gretl: 1.06 }[who];
-      C.waitress(ctx, x0 + 105, 100 + 813 * tall, 900, { name: 'stand' }, { who, carry: 'none', shadow: false });
+      C.waitress(ctx, x0 + 100, 175 + 1354 * tall, 1500, { name: 'stand' }, { who, carry: 'none', shadow: false });
       ctx.restore();
     });
     C.serveArm(ctx, 1480, 200, 0.55, { from: 0.15 });
