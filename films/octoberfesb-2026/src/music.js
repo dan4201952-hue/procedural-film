@@ -34,10 +34,25 @@
     // Master tilt EQ in dB: a low shelf under the subs, presence and air for phone speakers.
     eq: { low: -4, presence: 5, air: 3 },
     comp: { threshold: -18, knee: 10, ratio: 2, attack: 0.006, release: 0.2 },
-    // Section fader rides in dB at global times, pre-compressor: quiet egg, hushed pupa, full drop,
-    // hushed winter, and an ending level that meets the opening level at the loop seam.
-    // Per film: section fader rides in dB at global times, pre-compressor (see reference/music.md).
-    ride: [[0, 0]],
+    // Section fader rides in dB at global times, pre-compressor: hushed 2 s intro, the groove
+    // building underneath, full tutti at the T 6.0 cut, a small lift into the salsa and the second
+    // tutti, peaks at the big brass hits, then a ramp back down under the final chord's ring-out so
+    // the loop seam (loud ending vs. hushed intro) restarts cleanly.
+    ride: [
+      [0, -14.5],
+      [2.0, -12],
+      [5.5, -9.5],
+      [6.0, -7.5],
+      [15.4, -6.9],
+      [16.0, -7.2],
+      [24.0, -6.7],
+      [27.4, -6.5],
+      [28.0, -7.5],
+      [30.5, -6.6],
+      [33.0, -6.4],
+      [35.0, -7.2],
+      [36.0, -14.5],
+    ],
   };
 
   // ---------------------------------------------------------------- pitch
@@ -1309,34 +1324,429 @@
   }
 
   // ---------------------------------------------------------------- the score
-  // DEMO SCORE — replace wholesale when composing the film. It gives the stub pass a pulse and
-  // shows the engine idiom: instruments take absolute global times, score() is re-invoked per bar
-  // and the engine windows each call, so scheduling the whole piece here is correct. Everything
-  // below derives from FILM.TIMELINE, so it runs at any bpm and duration.
+  // OktoberFESB 2026: a Bb-major oom-pah polka (bars 1-8), a salsa vamp in G minor — Bb's relative
+  // minor, same key signature, so the return feels natural — (bars 9-14), then the polka reprise
+  // back in Bb (bars 15-18). Chord tones for the comping instruments (tuba root/fifth is derived
+  // from the chord's own outer notes).
   const CH = {
-    home: ['D3', 'A3', 'D4', 'F#4'],
-    away: ['G3', 'B3', 'D4', 'G4'],
+    I: ['Bb2', 'D3', 'F3'],
+    IV: ['Eb3', 'G3', 'Bb3'],
+    V: ['F3', 'A3', 'C4', 'Eb4'],
+    gi: ['G3', 'Bb3', 'D4'],
+    gVII: ['F3', 'A3', 'C4'],
+    gVI: ['Eb3', 'G3', 'Bb3'],
+    gV: ['D3', 'F#3', 'A3', 'C4'],
   };
+  const ROOT = { I: 'Bb1', IV: 'Eb2', V: 'F1', gi: 'G1', gVII: 'F1', gVI: 'Eb1', gV: 'D1' };
+  const FIFTH = { I: 'F2', IV: 'Bb2', V: 'C2', gi: 'D2', gVII: 'C2', gVI: 'Bb1', gV: 'A1' };
 
   function score(E, I) {
-    const { kick, hat, kalimba, pad, sub } = I;
+    const { kick, hat, crash, shaker, glass, fmBell, glock, tock, nz, sub, pluck, revSwell, glide } = I;
     const bpm = (FILM.TIMELINE && FILM.TIMELINE.bpm) || 120;
-    const DUR = (FILM.TIMELINE && FILM.TIMELINE.duration) || 32;
-    const BAR = 240 / bpm;
-    const BEAT = 60 / bpm;
-    const motif = ['D5', 'F#5', 'A5', 'E5'];
-    for (let beat = 0; beat * BEAT < DUR - 1e-9; beat++) {
-      const t = Math.round(beat * BEAT * 1000) / 1000;
-      const down = beat % 4 === 0;
-      kick(t, down ? 0.8 : 0.5, down ? 'full' : 'felt');
-      hat(t + BEAT / 2, 0.1);
-      kalimba(t + BEAT / 2, hz(motif[beat % 4]), 0.2, { hall: 0.15, delay: 0.1, pan: beat % 2 ? 0.15 : -0.15 });
-      if (down) {
-        const home = beat % 8 === 0;
-        pad(t, Math.min(t + BAR, DUR), home ? CH.home : CH.away, 0.28, { att: 0.05, rel: 0.1, cut0: 900, cut1: 1400, hall: 0.15 });
-        sub(t, Math.min(t + BAR, DUR), home ? 'D2' : 'G1', 0.4, { att: 0.02, rel: 0.08 });
-      }
+    const BEAT = 60 / bpm; // 0.5 s
+    const EIGHTH = BEAT / 2; // 0.25 s
+    const SIXTEENTH = BEAT / 4; // 0.125 s
+
+    // ---- bespoke voices for this film (built from the shared engine primitives) ----
+
+    // Tuba: sine fundamental plus a filtered, slightly detuned saw for grit, through a low-passed
+    // "oom-pah" envelope; a soft valve click gives short notes a clean attack for onset detection.
+    function tuba(t, note, dur, vel) {
+      const f = hz(note);
+      const V = E.voice(t, dur + 0.05, false);
+      if (!V) return;
+      const lp = E.filt('lowpass', 480, 0.7);
+      const g = E.gain(0);
+      V.env(g.gain, [[0, 0], [0.01, vel], [dur * 0.55, vel * 0.6, 'exp'], [dur, FLOOR, 'exp']]);
+      const s = E.osc('sine', f);
+      const sg = E.gain(0.75);
+      s.connect(sg);
+      sg.connect(lp);
+      const w = E.osc('sawtooth', f);
+      w.detune.value = -6;
+      const wg = E.gain(0.4);
+      w.connect(wg);
+      wg.connect(lp);
+      lp.connect(g);
+      E.out(g, 'bass');
+      V.osc(s);
+      V.osc(w);
+      const n = E.noise(V, ['tuba', t]);
+      const nf = E.filt('bandpass', 900, 1.4);
+      const ng = E.gain(0);
+      V.env(ng.gain, perc(vel * 0.15, 0.001, 0.02));
+      n.connect(nf);
+      nf.connect(ng);
+      E.out(ng, 'bass');
     }
+
+    // Accordion: two detuned soft-square voices and two detuned warm-saw voices per chord tone,
+    // through a band-pass, with a slow vibrato (an LFO added into each oscillator's detune) that
+    // swells in after the attack.
+    function accordion(t, notes, dur, vel, o) {
+      o = o || {};
+      const V = E.voice(t, dur + 0.08, false);
+      if (!V) return;
+      const bp = E.filt('bandpass', o.f || 1000, 0.85);
+      const g = E.gain(0);
+      V.env(g.gain, [[0, 0], [0.015, vel], [dur * 0.65, vel * 0.6, 'exp'], [dur, FLOOR, 'exp']]);
+      const lfo = E.osc('sine', 5.4);
+      const vg = E.gain(0);
+      V.env(vg.gain, [[0, 0], [0.12, 0], [Math.max(0.22, dur * 0.6), 5.5], [dur, 5.5]]);
+      lfo.connect(vg);
+      V.osc(lfo);
+      const per = 0.5 / notes.length;
+      notes.forEach((nm) => {
+        const f = hz(nm);
+        [[E.softSquare, -8], [E.softSquare, 8], [E.warmSaw, -3], [E.warmSaw, 3]].forEach(([wave, d]) => {
+          const s = E.osc(wave, f);
+          s.detune.value = d;
+          vg.connect(s.detune);
+          const sg = E.gain(per);
+          s.connect(sg);
+          sg.connect(bp);
+          V.osc(s);
+        });
+      });
+      bp.connect(g);
+      E.out(g, 'keys', Object.assign({ room: 0.12 }, o));
+    }
+
+    // Clarinet: a filtered-square lead voice, one oscillator per note (legato phrase built from
+    // discrete notes), with a light vibrato that grows in on held notes.
+    function clarinet(t, note, dur, vel, o) {
+      o = o || {};
+      const f = hz(note);
+      const rel = Math.min(0.08, dur * 0.3);
+      const V = E.voice(t, dur + 0.05, false);
+      if (!V) return;
+      const lp = E.filt('lowpass', o.cut || 2100, 2.1);
+      const g = E.gain(0);
+      V.env(g.gain, [[0, 0], [0.018, vel], [Math.max(0.02, dur - rel), vel * 0.92, 'lin'], [dur, FLOOR, 'exp']]);
+      const s = E.osc(E.softSquare, f);
+      const lfo = E.osc('sine', 5.6);
+      const vg = E.gain(0);
+      V.env(vg.gain, dur > 0.3 ? [[0, 0], [0.22, 0], [dur, f * 0.006]] : [[0, 0], [dur, 0]]);
+      lfo.connect(vg);
+      vg.connect(s.frequency);
+      s.connect(lp);
+      lp.connect(g);
+      E.out(g, 'lead', Object.assign({ hall: 0.18 }, o));
+      V.osc(s);
+      V.osc(lfo);
+    }
+
+    // Brass stab: detuned brass-saw pairs per note through a low-pass whose cutoff snaps open on
+    // the attack and settles — the filter envelope that gives it its "stab" character.
+    function brass(t, notes, dur, vel, o) {
+      o = o || {};
+      const bright = o.bright || 3200;
+      const V = E.voice(t, dur + 0.05, false);
+      if (!V) return;
+      const lp = E.filt('lowpass', 260, 1.1);
+      V.env(lp.frequency, [[0, 260], [Math.min(0.05, dur * 0.3), bright, 'exp'], [dur, Math.max(500, bright * 0.35), 'exp']]);
+      const g = E.gain(0);
+      V.env(g.gain, [[0, 0], [0.006, vel], [dur * 0.7, vel * 0.75, 'exp'], [dur, FLOOR, 'exp']]);
+      notes.forEach((nm) => {
+        const f = hz(nm);
+        [-8, 8].forEach((d) => {
+          const s = E.osc(E.brassSaw, f);
+          s.detune.value = d;
+          const sg = E.gain(0.5 / notes.length);
+          s.connect(sg);
+          sg.connect(lp);
+          V.osc(s);
+        });
+      });
+      lp.connect(g);
+      E.out(g, 'lead', Object.assign({ hall: 0.2 }, o));
+    }
+
+    // Snare: a band-passed noise body, a high-passed snap, and a small tonal thump.
+    function snare(t, vel) {
+      const V = E.voice(t, 0.16, false);
+      if (!V) return;
+      const n = E.noise(V, ['snare', t]);
+      const bp = E.filt('bandpass', 1800, 0.9);
+      const hpf = E.filt('highpass', 3200, 0.7);
+      const g1 = E.gain(0);
+      V.env(g1.gain, perc(vel, 0.001, 0.09));
+      const g2 = E.gain(0);
+      V.env(g2.gain, perc(vel * 0.7, 0.0008, 0.055));
+      n.connect(bp);
+      bp.connect(g1);
+      n.connect(hpf);
+      hpf.connect(g2);
+      E.out(g1, 'drums');
+      E.out(g2, 'drums');
+      const s = E.osc('sine', 195);
+      V.env(s.frequency, [[0, 195], [0.05, 140, 'exp']]);
+      const gs = E.gain(0);
+      V.env(gs.gain, perc(vel * 0.35, 0.001, 0.045));
+      s.connect(gs);
+      E.out(gs, 'drums');
+      V.osc(s, 0.06);
+    }
+
+    // Shared "sine with a pitch drop, plus a bandpassed slap" body for congas and toms.
+    function tonedHit(t, vel, f0, f1, dec, bus, pan) {
+      const V = E.voice(t, dec + 0.04, false);
+      if (!V) return;
+      const s = E.osc('sine', f0);
+      V.env(s.frequency, [[0, f0], [dec * 0.4, f1, 'exp']]);
+      const g = E.gain(0);
+      V.env(g.gain, perc(vel, 0.002, dec));
+      s.connect(g);
+      E.out(g, bus, { pan });
+      V.osc(s);
+      const n = E.noise(V, ['tonedhit', t, f0]);
+      const f = E.filt('bandpass', Math.min(9000, f0 * 6), 1.3);
+      const ng = E.gain(0);
+      V.env(ng.gain, perc(vel * 0.3, 0.0006, 0.015));
+      n.connect(f);
+      f.connect(ng);
+      E.out(ng, bus, { pan });
+    }
+    const CONGA = { open: [220, 150, 0.16], muff: [260, 190, 0.07] };
+    const conga = (t, vel, tone) => tonedHit(t, vel, CONGA[tone][0], CONGA[tone][1], CONGA[tone][2], 'perc', 0.1);
+    const tom = (t, vel, hi) => tonedHit(t, vel, hi ? 190 : 140, hi ? 110 : 85, 0.14, 'drums', 0);
+
+    // Cowbell: two square partials (540 / 800 Hz) through a band-pass tuned between them.
+    function cowbell(t, vel) {
+      const V = E.voice(t, 0.2, false);
+      if (!V) return;
+      const bp = E.filt('bandpass', 660, 3.2);
+      const g = E.gain(0);
+      V.env(g.gain, perc(vel, 0.001, 0.13));
+      [540, 800].forEach((f) => {
+        const s = E.osc('square', f);
+        const sg = E.gain(0.5);
+        s.connect(sg);
+        sg.connect(bp);
+        V.osc(s, 0.15);
+      });
+      bp.connect(g);
+      E.out(g, 'perc', { pan: -0.15 });
+    }
+
+    // Montuno piano: a triangle fundamental plus a fast-decaying sine octave.
+    function piano(t, note, vel, dur) {
+      const f = hz(note);
+      const V = E.voice(t, dur + 0.05, false);
+      if (!V) return;
+      const lp = E.filt('lowpass', 3500, 0.8);
+      const g = E.gain(0);
+      V.env(g.gain, [[0, 0], [0.003, vel], [dur * 0.5, vel * 0.35, 'exp'], [dur, FLOOR, 'exp']]);
+      const s = E.osc('triangle', f);
+      const sg = E.gain(0.8);
+      s.connect(sg);
+      sg.connect(lp);
+      const h = E.osc('sine', f * 2);
+      const hg = E.gain(0);
+      V.env(hg.gain, perc(vel * 0.25, 0.001, dur * 0.3));
+      h.connect(hg);
+      lp.connect(g);
+      E.out(g, 'keys', { room: 0.08 });
+      E.out(hg, 'keys', { room: 0.08 });
+      V.osc(s);
+      V.osc(h);
+    }
+
+    // Clave: a short high sine plus a click (the engine's woodblock voice, retuned).
+    const clave = (t, vel) => tock(t, vel, 2500, { dec: 0.04, bus: 'perc', pan: 0.15 });
+    const up = (n) => n.replace(/(-?\d)$/, (d) => String(Number(d) + 1));
+
+    // One bar of oom-pah: tuba on 1 and 3 (root, then the chord's fifth), accordion chord stabs
+    // and snare on the off-beats 2 and 4; a soft closed-hat 8th pulse fills the tutti bars.
+    function polkaBar(t0, chord, o) {
+      o = o || {};
+      const vel = o.vel || 0.5;
+      const tutti = !!o.tutti;
+      tuba(t0, ROOT[chord], 0.85, vel);
+      tuba(t0 + BEAT, FIFTH[chord], 0.85, vel * 0.92);
+      accordion(t0 + BEAT * 0.5, CH[chord], 0.42, vel * (tutti ? 0.62 : 0.4));
+      accordion(t0 + BEAT * 1.5, CH[chord], 0.42, vel * (tutti ? 0.62 : 0.4));
+      snare(t0 + BEAT * 0.5, vel * (tutti ? 0.55 : 0.28));
+      snare(t0 + BEAT * 1.5, vel * (tutti ? 0.55 : 0.28));
+      if (tutti) for (let i = 0; i < 8; i++) hat(t0 + i * EIGHTH, i % 2 ? 0.07 : 0.05);
+    }
+
+    // ================================================================ Act 1: polka (bars 1-8, 0-16 s)
+
+    // T 0.0-1.75: eight rising test-tick blips on 8ths, plus a soft tuba pickup and two pizzicato ticks.
+    ['C6', 'D6', 'E6', 'F6', 'G6', 'A6', 'B6', 'C7'].forEach((n, i) => I.bleep(i * EIGHTH, hz(n), 0.32));
+    tuba(0.0, 'Bb1', 1.8, 0.12);
+    pluck(0.5, 'F2', 0.16, { dec: 0.3, bus: 'bass', bright: 5 });
+    pluck(1.25, 'Bb2', 0.16, { dec: 0.3, bus: 'bass', bright: 5 });
+
+    // T 2.0: the groove starts underneath (quiet); T 6.0: full tutti. I-V-I-IV-I-V-I.
+    const POLKA_BARS = [
+      { t: 2, ch: 'I', tutti: false },
+      { t: 4, ch: 'V', tutti: false },
+      { t: 6, ch: 'I', tutti: true },
+      { t: 8, ch: 'IV', tutti: true },
+      { t: 10, ch: 'I', tutti: true },
+      { t: 12, ch: 'V', tutti: true },
+      { t: 14, ch: 'I', tutti: true },
+    ];
+    POLKA_BARS.forEach((b) => polkaBar(b.t, b.ch, { vel: b.tutti ? 0.62 : 0.32, tutti: b.tutti }));
+
+    // T 2.5: Deploy — thunk, crash, brass stab; confetti ticks on 16ths to T 3.0. T 3.0: caption bell.
+    kick(2.5, 0.95, 'full');
+    crash(2.5, 0.85, { dec: 1.3 });
+    brass(2.5, CH.V, 0.35, 0.75);
+    for (let i = 0; i < 4; i++) shaker(2.5 + i * SIXTEENTH, 0.28 - i * 0.03);
+    fmBell(3.0, hz('C6'), 0.55, { ratio: 2, index: 2.2, dec: 0.7, bus: 'bells' });
+
+    // T 4.0-5.0: pour (rising band-pass sweep) with a ratchet tick every 0.1 s. T 5.0: cork pop.
+    nz(4.0, 1.0, { type: 'bandpass', q: 1.0, f: [[0, 300], [1.0, 3000, 'exp']], amp: [[0, 0.001], [0.05, 0.32], [1.0, 0.5, 'exp']], bus: 'sfx', key: 'pour' });
+    for (let i = 0; i < 10; i++) tock(4.0 + i * 0.1, 0.22, 1100 + i * 90, { dec: 0.02, bus: 'sfx' });
+    I.chew(5.0, 0.55, 0);
+    tonedHit(5.0, 0.45, 900, 320, 0.05, 'sfx', 0);
+
+    // T 5.5-6.0: foam fizz swelling into a whoosh to the cut (a shaker seeds the onset at 5.5).
+    shaker(5.5, 0.32);
+    revSwell(5.5, 0.5, 0.75, { hi: false, fTop: 3200, bus: 'sfx', hall: 0.25 });
+
+    // T 6.0: full polka tutti, clarinet melody. The catchy hook (T 6.0-14.5).
+    crash(6.0, 0.85, { dec: 1.6 });
+    const HOOK = [
+      [6.0, 'D5', 0.45, 0.55], [6.5, 'F5', 0.45, 0.6], [7.0, 'Bb5', 0.45, 0.68], [7.5, 'A5', 0.22, 0.55], [7.75, 'G5', 0.22, 0.5],
+      [8.0, 'F5', 0.45, 0.55], [8.5, 'Eb5', 0.45, 0.55], [9.0, 'D5', 0.45, 0.5], [9.5, 'C5', 0.22, 0.5], [9.75, 'D5', 0.22, 0.55],
+      [10.0, 'D5', 0.22, 0.5], [10.25, 'F5', 0.22, 0.55], [10.5, 'A5', 0.22, 0.6], [10.75, 'Bb5', 0.22, 0.65],
+      [11.0, 'A5', 0.22, 0.58], [11.25, 'G5', 0.22, 0.52], [11.5, 'F5', 0.22, 0.5], [11.75, 'D5', 0.22, 0.48],
+      [12.0, 'D5', 0.45, 0.55], [12.5, 'F5', 0.45, 0.6], [13.0, 'Bb5', 0.45, 0.68], [13.5, 'C5', 0.22, 0.55], [13.75, 'A4', 0.22, 0.5],
+      [14.0, 'D5', 0.5, 0.6],
+    ];
+    HOOK.forEach(([t, n, d, v]) => clarinet(t, n, d, v));
+
+    // T 7.0: caption bell. T 8.0: glass ping (3.2 kHz).
+    fmBell(7.0, hz('C6'), 0.5, { ratio: 2, index: 2.2, dec: 0.7, bus: 'bells' });
+    glass(8.0, 3200, 0.5, { dec: 0.4, bus: 'bells' });
+
+    // T 8.5-10: blueprint 1 — FM-bell sparkle arpeggio plus label blips on 8ths; T 9.5: queue slide blip.
+    ['C6', 'E6', 'G6', 'C7'].forEach((n, i) => fmBell(8.5 + i * SIXTEENTH, hz(n), 0.4, { ratio: 2.4, index: 2, dec: 0.5, bus: 'bells' }));
+    [['C6', 8.5], ['D6', 8.75], ['E6', 9.0], ['F6', 9.25], ['G6', 9.75]].forEach(([n, t]) => I.bleep(t, hz(n), 0.24));
+    I.plip(9.5, 1800, 2600, 0.4, { bus: 'sfx' });
+
+    // T 10.0-12.5: footsteps on the beats (wooden thumps), glass clinks on the 8ths between.
+    [10.0, 10.5, 11.0, 11.5, 12.0].forEach((t) => tock(t, 0.42, 110, { dec: 0.09, bus: 'perc' }));
+    [10.25, 10.75, 11.25, 11.75, 12.25].forEach((t) => glass(t, 2800, 0.3, { dec: 0.3, bus: 'bells' }));
+
+    // T 12.5-14: blueprint 2 sparkle; T 12.75-13.5: ten rising blips; T 13.75: success chime.
+    ['D6', 'F6', 'A6', 'D7'].forEach((n, i) => fmBell(12.5 + i * SIXTEENTH, hz(n), 0.4, { ratio: 2.4, index: 2, dec: 0.5, bus: 'bells' }));
+    for (let i = 0; i < 10; i++) I.bleep(12.75 + i * (0.75 / 9), hz('C6') * Math.pow(2, i / 12), 0.26 + i * 0.02);
+    glock(13.75, hz('Bb5'), 0.5, { dec: 1.0, bus: 'bells' });
+    glock(13.85, hz('D6'), 0.45, { dec: 0.9, bus: 'bells' });
+    glock(13.95, hz('F6'), 0.45, { dec: 0.9, bus: 'bells' });
+
+    // T 14.25: pork knuckle thud. T 14.5: glass set down.
+    kick(14.25, 0.9, 'thud');
+    glass(14.5, 1600, 0.42, { dec: 0.35, bus: 'bells' });
+
+    // T 15.0: Prost clink — detuned glass pings, brass "hey" stab, cymbal.
+    [2400, 2430, 2460, 2500].forEach((f, i) => glass(15.0, f, 0.42, { dec: 0.9, bus: 'bells', pan: -0.3 + i * 0.2 }));
+    brass(15.0, CH.I, 0.5, 0.85);
+    accordion(15.0, CH.I, 0.5, 0.5);
+    crash(15.0, 0.8, { dec: 1.4 });
+
+    // T 15.5-16.0: drum fill into the change.
+    [15.5, 15.625, 15.75, 15.875].forEach((t, i) => snare(t, 0.4 + i * 0.12));
+
+    // T 16.0: record scratch into the salsa downbeat. T 16.25: head-gleam shimmer.
+    nz(16.0, 0.15, { type: 'bandpass', q: 3, f: [[0, 1200], [0.05, 420, 'exp'], [0.1, 1500, 'exp'], [0.15, 320, 'exp']], amp: [[0, 0], [0.006, 0.5], [0.08, 0.28], [0.15, FLOOR]], bus: 'sfx' });
+    fmBell(16.25, hz('A5'), 0.4, { ratio: 2.1, index: 2.5, dec: 0.8, bus: 'bells' });
+    I.bleep(16.3, hz('E6'), 0.24);
+
+    // ================================================================ Act 2: salsa (bars 9-14, 16-28 s)
+    // G minor — Bb major's relative minor — i-bVII-bVI-V7 vamp: clave 3-2, conga tumbao, cowbell on
+    // the beat, an anticipated ("anticipada") tumbao bass, a syncopated piano montuno, brass punches.
+    const SALSA_CHORDS = ['gi', 'gVII', 'gVI', 'gV', 'gi', 'gV'];
+    const MONTUNO_POS = [1, 3, 4, 6, 8, 9, 11, 13];
+    const MONTUNO_DEG = [1, 2, 0, 1, 2, 0, 1, 2];
+    SALSA_CHORDS.forEach((chord, idx) => {
+      const t0 = 16 + idx * 2;
+      const nextChord = SALSA_CHORDS[(idx + 1) % SALSA_CHORDS.length];
+      const claveHits = idx % 2 === 0 ? [0, 0.75, 1.5] : [0.5, 1.25]; // 3-side then 2-side
+      claveHits.forEach((o) => clave(t0 + o, 0.55));
+      conga(t0 + 0.25, 0.26, 'muff');
+      conga(t0 + 0.75, 0.55, 'open');
+      conga(t0 + 1.5, 0.55, 'open');
+      conga(t0 + 1.75, 0.26, 'muff');
+      [0, 0.5, 1.0, 1.5].forEach((o) => cowbell(t0 + o, 0.4));
+      sub(t0 + 0.5, t0 + 0.5 + 0.45, ROOT[chord], 0.55, { att: 0.006, rel: 0.05 });
+      sub(t0 + 1.75, t0 + 1.75 + 0.65, ROOT[nextChord], 0.5, { att: 0.006, rel: 0.05 }); // anticipated bass
+      MONTUNO_POS.forEach((p, i) => piano(t0 + p * SIXTEENTH, up(CH[chord][MONTUNO_DEG[i]]), 0.16, 0.3));
+      brass(t0, CH[chord], 0.16, 0.5);
+      if (idx % 2 === 1) brass(t0 + 1.0, CH[chord], 0.14, 0.45);
+    });
+
+    // T 18.5-22.0: fifteen throw whooshes on 8ths; T 19.0-22.5: fifteen catch flaps on 8ths.
+    for (let i = 0; i < 15; i++) {
+      nz(18.5 + i * EIGHTH, 0.16, { type: 'bandpass', q: 0.9, f: [[0, 2600], [0.15, 700, 'exp']], amp: perc(0.34, 0.006, 0.11), bus: 'sfx', pan: i % 2 ? 0.3 : -0.3 });
+    }
+    for (let i = 0; i < 15; i++) {
+      nz(19.0 + i * EIGHTH, 0.09, { type: 'highpass', f: [[0, 1800]], amp: perc(0.3, 0.004, 0.05), bus: 'sfx', pan: i % 2 ? -0.2 : 0.2 });
+    }
+
+    // T 23.0-23.875: eight rising brass stabs on 16ths. T 24.0: the full brass hit.
+    const TURN_BASE = CH.gVII.map(hz);
+    for (let i = 0; i < 8; i++) brass(23.0 + i * SIXTEENTH, TURN_BASE.map((f) => f * Math.pow(2, i / 12)), 0.13, 0.4 + i * 0.06);
+    brass(24.0, CH.gi, 0.5, 0.9);
+    tuba(24.0, 'G1', 0.5, 0.75);
+    crash(24.0, 0.9, { dec: 1.6 });
+
+    // T 25.5-27.0: rising whoosh glissando while the foam draws the 9 (ends just shy of 27.0 so the
+    // sparkle hit reads as a clean new onset rather than a continuation of the glissando's tail).
+    shaker(25.5, 0.3);
+    glide(25.5, 300, 3400, 1.42, 0.55, { bus: 'sfx' });
+    revSwell(25.5, 1.42, 0.45, { hi: true, bus: 'sfx' });
+
+    // T 27.0: sparkle hit and brass fall on the finished 9.
+    glass(27.0, 2600, 0.55, { dec: 0.5, bus: 'bells' });
+    fmBell(27.0, hz('C6'), 0.6, { ratio: 2, index: 2.2, dec: 0.8, bus: 'bells' });
+    I.horn([[27.0, 'Bb4'], [27.35, 'F4']], 27.55, 0.6, {});
+
+    // T 27.5-28.0: snare roll into the polka reprise.
+    for (let i = 0; i < 8; i++) snare(27.5 + i * 0.0625, 0.32 + i * 0.06);
+
+    // ================================================================ Act 3: polka reprise (bars 15-18, 28-36 s)
+    crash(28.0, 0.85, { dec: 1.5 });
+    polkaBar(28.0, 'I', { vel: 0.62, tutti: true });
+    polkaBar(30.0, 'V', { vel: 0.62, tutti: true });
+    [[28.0, 'D5', 0.45, 0.6], [28.5, 'F5', 0.45, 0.62], [29.0, 'Bb5', 0.45, 0.7], [29.5, 'A5', 0.22, 0.55], [29.75, 'G5', 0.22, 0.5]].forEach(
+      ([t, n, d, v]) => clarinet(t, n, d, v)
+    );
+
+    // T 30.0-30.5: whoosh rising into the cut. T 30.5: crash and brass tutti on the logo.
+    shaker(30.0, 0.32);
+    revSwell(30.0, 0.5, 0.7, { hi: true, bus: 'sfx' });
+    crash(30.5, 0.9, { dec: 1.8 });
+    brass(30.5, CH.V, 0.6, 0.85);
+    tuba(30.5, 'F1', 0.6, 0.7);
+
+    // T 32.0-32.5: letter-slam tom hits on 16ths.
+    [32.0, 32.125, 32.25, 32.375].forEach((t, i) => tom(t, 0.5 + i * 0.1, i >= 2));
+
+    // T 33.0: the big "Prost!" brass chord.
+    brass(33.0, ['Bb3', 'D4', 'F4', 'Bb4'], 1.3, 0.95);
+    tuba(33.0, 'Bb1', 1.3, 0.8);
+    accordion(33.0, CH.I, 1.3, 0.55);
+    crash(33.0, 0.9, { dec: 1.8 });
+    glock(33.05, hz('Bb5'), 0.4, { dec: 1.4, bus: 'bells' });
+
+    // T 34.0: a short passing dominant on the way to the final chord.
+    brass(34.0, CH.V, 0.4, 0.5);
+    tuba(34.0, 'F1', 0.4, 0.45);
+
+    // T 35.0: the final chord, ringing out to T 36.0 (the master ride and the engine's output
+    // fade take it to silence exactly at the end).
+    brass(35.0, ['Bb3', 'D4', 'F4', 'Bb4'], 1.0, 1.0);
+    tuba(35.0, 'Bb1', 1.0, 0.85);
+    accordion(35.0, CH.I, 1.0, 0.55);
+    crash(35.0, 0.85, { dec: 1.5 });
+    glock(35.05, hz('Bb5'), 0.45, { dec: 1.6, bus: 'bells' });
+    glock(35.1, hz('D6'), 0.4, { dec: 1.5, bus: 'bells' });
   }
 
   FILM.audio = {
