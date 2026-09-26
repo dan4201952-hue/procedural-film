@@ -127,7 +127,7 @@ All outlines go through `lib.inkPath` so the film keeps the drawn boil, but tune
 
 ## 4. Tone and rendering
 
-The target is the rendering of the client's OktoberFESB logo applied to everything, people included: a polished, semi-realistic vector illustration with volume, not flat cel shading and not chibi.
+The target is the rendering of the client's OktoberFESB logo applied to everything, people included: a polished vector illustration with volume, not flat cel shading; the people carry only a light touch of caricature (4.1).
 Light comes from the upper left (warm, hall lamps); a cooler bounce light from the lower right.
 
 - **Volume by gradients.** Every form is filled with a gradient along the light direction: the lit side about 10 percent lighter than the base, the shadow side 20 to 30 percent darker, with a soft core-shadow band just before the terminator. Round forms (heads, mugs, bellies, knuckles, the bald head) use radial gradients offset to the upper left.
@@ -141,12 +141,16 @@ Light comes from the upper left (warm, hall lamps); a cooler bounce light from t
 - Background depth: the far wall and far crowd sit behind a 35 percent `hallDim` haze and a soft radial lamp glow; there is no blur filter.
 - Set `post: 0.5` on hall and office shots in the timeline so the engine grain stays subtle.
 
-### 4.1 People
+### 4.1 People: a light touch of caricature
 
-- Realistic adult proportions: the head is about 1/7 of the height for everyone, the chef included. No big-head chibi look.
-- Bodies are smooth closed silhouettes per part (torso with chest, shoulders and waist; upper arm with the deltoid, forearm tapering to the wrist; hands with fingers and a thumb; thigh, knee, calf, ankle), overlapped so clothing hides the joints. Never a visible joint disc, ball or capsule end.
-- Faces semi-realistic: almond eyes with a coloured iris, pupil, catch-light, upper lid line and a soft lid shadow; eyebrows as shaped strokes; a nose with a bridge shadow, a lit tip and nostrils; lips with an upper-lip line and a lit lower lip, teeth when grinning; cheekbone, jaw and under-chin shading; ears with inner detail. Men have no eyelash strokes and at most a faint warm cheek tone.
-- Expressions are lively and readable at 300 px figure height: smiles lift the cheeks and crinkle the eyes.
+The people are near-realistic, polished illustrations with only a light touch of caricature for the party mood: the volume, light and gloss of section 4, proportions close to real, features nudged just enough to be warm and fun. Not chibi, not a doll, not a grotesque.
+
+- Heads slightly large: about 1/6 of the height for everyone (the chef the same). Bodies keep real anatomy.
+- Nudge each person's distinguishing trait only about 10 to 15 percent: the tallest is lanky with long legs and a long neck, the stocky ones are round and broad with thick necks, the chef's shiny bald dome, strong black brows and trimmed beard are pushed, the glasses are big, the curly hair is extra curly.
+- Bodies are smooth closed silhouettes per part (torso with chest, shoulders and waist; upper arm with the deltoid, forearm tapering to the wrist; hands slightly large with fingers and a thumb; thigh, knee, calf, ankle), overlapped so clothing hides the joints. Never a visible joint disc, ball or capsule end.
+- Faces: expressive, near-realistic faces rendered with volume: almond eyes with a coloured iris, pupil, catch-light, lid line and lid shadow; shaped brows that act; a characterful nose with a bridge shadow and a lit tip; lips, and big teeth in grins; cheekbones, jaw and under-chin shading; ears with inner detail. Men have no eyelash strokes and at most a faint warm cheek tone.
+- Expressions and gestures are lively and warm, readable at 300 px figure height: grins lift the cheeks and crinkle the eyes, eyebrows fly up, bodies lean into the action with squash and stretch on the accents.
+- The chef's likeness comes from his reference photo with only a light, flattering stylisation: the life of the party.
 
 ## 5. Blueprint language (shots 05 and 07)
 
@@ -199,7 +203,7 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 - About 45 to 50 years old: a mature, energetic man, faint forehead lines and slight crow's feet when he smiles, only a touch of grey in the black beard and brows.
 - Light skin (chefSkin). Clean-shaven bald head, round with a strong white gleam on the upper left (a 40 px soft stroke plus a star sparkle that pings on the downbeats in 09).
 - A neat, short, trimmed beard shaped as in the client's reference photo: black with just a light sprinkle of grey (beard, beardLight on the lit side, a few short beardGrey hairs mostly on the chin and sideburns), closely trimmed along the jaw, a little fuller on the chin, the cheek line clean and low, joined to a short moustache; tidy, never bushy. Thick, straight-ish black eyebrows (chefBrow) with a couple of grey hairs. Brown eyes, a strong straight nose, faint forehead lines, and he is almost always smiling: a bright open smile at rest, a big laughing grin with teeth when he performs.
-- Lean, wiry, fit build (поджарый): narrow waist, flat stomach, defined forearms and calves, no belly; shorter than most of the team (height 0.95 of the team average, so the tall teammates stand a head above him). His energy, not his size, fills the room.
+- Lean, wiry, fit build (поджарый): narrow waist, flat stomach, defined forearms and calves, no belly; shorter than most of the team (height 0.95 of the team average, so the tall teammates stand well above him). His energy, not his size, fills the room.
 - Party outfit: white shirt with rolled sleeves, lederhosen suspenders with a cross strap, lederhosen shorts, knee socks, brown shoes.
 - The red bandana (bandana with bandanaDot dots) is tied over the head with the knot and two short tails at the back of the head; the tails flutter on turns.
 - Office (shot 02): only his hand in a dark navy hoodie sleeve and the edge of his chin with the short trimmed beard entering from the top of the frame. The face is never shown before 09.
@@ -208,11 +212,12 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 
 ### 10.2 The waitresses
 
-- Three waitresses, all cheerful, strong women in the classic dirndl, drawn in the film's polished style (art bible 4), each with her own look so they never read as copies:
+- Four waitresses, all cheerful, strong women in the classic dirndl, drawn in the film's polished style (art bible 4), each with her own look so they never read as copies:
   - **Liesl** (the hero waitress, shot 06 foreground): blonde (hairBlonde) braided crown, full figure, dark-green bodice (dirndlBodice), burgundy skirt (dirndlSkirt), light-blue apron (dirndlApron).
   - **Resi**: dark brown hair (hairBrown) in a low bun with a flower, curvy, burgundy bodice, dark-green skirt, cream apron.
   - **Vroni**: auburn (hairRed) twin braids, slimmer, navy-blue bodice, dirndlApron-blue checked skirt, white apron, a high-necked blouse.
-- The blouse is the short puffed-sleeve dirndl blouse; Liesl and Resi wear the traditional low, rounded dirndl neckline with a visible décolleté, as on a real dirndl and on Oktoberfest postcards; Vroni wears a high-necked blouse. Draw the neckline naturally and in proportion: no exaggeration, no close-ups on it, no camera or motion that dwells on it.
+  - **Gretl**: light-brown (hairFair) high ponytail with a ribbon, tall and full-figured, rose-pink bodice, slate-blue skirt, rose apron.
+- The blouse is the short puffed-sleeve dirndl blouse; Liesl, Resi and Gretl wear the traditional low, rounded dirndl neckline with a visible décolleté, as on a real dirndl and on Oktoberfest postcards; Vroni wears a high-necked blouse. Draw the neckline naturally and in proportion: no exaggeration, no close-ups on it, no camera or motion that dwells on it.
 - The apron bow is tied on their left (the viewer's right).
 - They carry Maß mugs by the handles, up to five per hand, fanned outward, arms nearly straight, leaning back slightly; or a plate of food on a raised palm.
 - Friendly, confident, busy; never posed as eye candy.
@@ -286,7 +291,7 @@ On a unit square (0..1, origin top-left):
 
 - Hatched shading or flat single-tone fills: this film renders volume with gradients, rim light and gloss, never hatching.
 - Capsule limbs, visible joint circles or white balls at shoulders, elbows and knees: limbs are continuous tapered shapes and clothing covers the joints.
-- Chibi proportions or doll faces with eyelashes and blush on the men: realistic proportions, semi-realistic faces.
+- Chibi babies, doll faces with eyelashes and blush on the men, or heavy caricature: near-realistic adults with a light touch of stylisation and volume.
 - The chef's knee socks as thick tubes or his lederhosen as a shapeless barrel: fitted leather shorts ending above the knee with a front flap, suspenders with the H-bar, slim knee socks over the calf.
 - A German flag or a checkerboard: Bavarian bunting is blue and white lozenges.
 - A beer stein with a lid or a pint glass: the mug is the glass Maß with a D handle.

@@ -230,7 +230,7 @@ T 8.5: a digital sparkle (FM bell arpeggio) over the band; label ticks as soft b
 T 10.0 to 12.5, illustrated, cut.
 
 ### Composition
-The hall in a wide side view: long tables and benches with teammates (TEAM, casual clothes) at the middle depth, bunting and garlands above. Liesl (FILM.cast.waitress, who 'liesl') walks left to right with ten mugs, five per hand, the hero mug (with the FESB logo) at the front of her right-hand fan. Behind her, at the back depth, Resi crosses right to left with ten mugs and Vroni carries a plate of sausages, both at about 0.6 of Liesl's height. Foreground: a table edge and a pretzel on it at the bottom-left.
+The hall in a wide side view: long tables and benches with teammates (TEAM, casual clothes) at the middle depth, bunting and garlands above. Liesl (FILM.cast.waitress, who 'liesl') walks left to right with ten mugs, five per hand, the hero mug (with the FESB logo) at the front of her right-hand fan. Behind her, at the back depth, Resi crosses right to left with ten mugs, Vroni carries a plate of sausages and Gretl a plate of pretzels, all at about 0.6 of Liesl's height. Foreground: a table edge and a pretzel on it at the bottom-left.
 
 ### Forms
 Art bible 10.2, 10.3, 10.6.
@@ -350,7 +350,7 @@ T 16.0: a record scratch, then salsa: clave 3-2, congas tumbao, piano montuno, b
 T 18.5 to 22.5, illustrated, cut.
 
 ### Composition
-The hall wide: the chef dancing along the aisle between two long tables, a crate stencilled "OktoberFESB" at his feet. All fifteen teammates on benches on both sides of the aisle. At the back, the three waitresses stop with their mugs and clap along. Bunting and garlands above.
+The hall wide: the chef dancing along the aisle between two long tables, a crate stencilled "OktoberFESB" at his feet. All fifteen teammates on benches on both sides of the aisle. At the back, the four waitresses stop and clap along. Bunting and garlands above.
 
 ### Forms
 Art bible 10.1, 10.3, 10.8.
