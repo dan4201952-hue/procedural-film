@@ -74,8 +74,10 @@ This film uses them only on the blueprint plate (section 5). Hall and office sho
 | skinC | #C98A62 | Tan skin |
 | skinD | #8D5A3B | Deep skin |
 | chefSkin | #E8B48E | The chef's face and head |
-| beard | #2B211D | The chef's beard, eyebrows |
-| beardGrey | #6E6560 | A few grey strands in the beard |
+| beard | #7A4B26 | The chef's beard and moustache (warm brown with a ginger cast) |
+| beardLight | #A8703A | Beard highlights and the lighter hairs on the cheeks |
+| beardGrey | #6E6560 | Spare; not used on the chef |
+| chefBrow | #3E2A1E | The chef's eyebrows, darker than the beard |
 | bandana | #D62839 | The chef's red bandana |
 | bandanaDot | #FFFFFF | The bandana's dots |
 | lederhosen | #6B4226 | The chef's lederhosen and suspenders |
@@ -178,8 +180,8 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 
 ### 10.1 The chef (the company head)
 
-- Bald, round head with a strong white gleam on the upper left (a 40 px soft stroke plus a star sparkle that pings on the downbeats in 09).
-- A neat, small, short beard: a closely trimmed dark beard (beard, a few beardGrey strands) that follows the jaw and chin line, only 10 to 15 px thick at 800 px figure height, joined to a short trimmed moustache; tidy, never bushy or full. Thick dark eyebrows; warm, confident smile with teeth; friendly eyes.
+- Light skin (chefSkin). Clean-shaven bald head, round with a strong white gleam on the upper left (a 40 px soft stroke plus a star sparkle that pings on the downbeats in 09).
+- A neat, short, trimmed beard as in the client's reference photo: warm brown with a ginger cast (beard, beardLight highlights), closely trimmed along the jaw, a little fuller on the chin, the cheek line clean and low, joined to a short moustache; tidy, never bushy. Eyebrows thick, straight-ish and darker than the beard (chefBrow). Brown eyes, a strong straight nose, faint forehead lines, a calm confident half-smile at rest and a warm grin with teeth when he performs.
 - Sturdy build, head about 1/6.5 of his height, broad shoulders.
 - Party outfit: white shirt with rolled sleeves, lederhosen suspenders with a cross strap, lederhosen shorts, knee socks, brown shoes.
 - The red bandana (bandana with bandanaDot dots) is tied over the head with the knot and two short tails at the back of the head; the tails flutter on turns.
@@ -198,7 +200,7 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 
 - Fifteen teammates (the real team is 15 people plus the chef), all white men (skinA and skinB only).
 - Ages vary: nine look 30 to 40, four look in their twenties, and two look older (45 to 55, greying hair, a few forehead lines). There are always more younger men than older ones.
-- Vary them by hair (short, buzz cut, side part, curly, quiff, long-ish tied back, receding for an older one; hairBlonde, hairBrown, hairBlack, hairRed, grey for the older ones), facial hair (clean-shaven, stubble, short beard, moustache; about a quarter with stubble or a short beard; nobody else is bald, so the chef's bald head, short dark beard and red bandana stay unique), glasses on three or four, and build (slim, average, stocky).
+- Vary them by hair (short, buzz cut, side part, curly, quiff, long-ish tied back, receding for an older one; hairBlonde, hairBrown, hairBlack, hairRed, grey for the older ones), facial hair (clean-shaven, stubble, short beard, moustache; about a quarter with stubble or a short beard; nobody else is bald, so the chef's bald head, short brown beard and red bandana stay unique), glasses on three or four, and build (slim, average, stocky).
 - Nobody is bald except the chef.
 - Before the t-shirts: casual shirts and sweaters in muted colours (grey, olive, mustard, maroon, denim).
 - After the t-shirts: every teammate in the fesbBlue jersey tee (10.8).
@@ -260,7 +262,7 @@ On a unit square (0..1, origin top-left):
 - A beer stein with a lid or a pint glass: the mug is the glass Maß with a D handle.
 - `OctoberFESB` with a c: the brand is `OktoberFESB`.
 - The FESB logo with four rounded corners or an E instead of an F: two opposite rounded corners and a white F.
-- The chef with hair, a grey beard or a big bushy beard: he is bald with a neat, short, trimmed dark beard and a red bandana.
+- The chef with hair, a grey beard or a big bushy beard: he is bald with a neat, short, trimmed warm-brown beard and a red bandana.
 - Showing the chef's face in 01 to 08: he is a silhouette hand and beard edge in 02 and appears only in 09.
 - The waitress carrying a tray: she carries the mugs by their handles, five per hand.
 - Text below y 970 or beyond x 1760: captions stay in the safe area.

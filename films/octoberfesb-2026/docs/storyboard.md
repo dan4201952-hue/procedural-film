@@ -110,7 +110,7 @@ T 0.0: a soft tuba pickup and pizzicato tick; each test tick at T 0.25·k is a b
 T 2.0 to 4.0, illustrated, cut.
 
 ### Composition
-Close-up on the dark console: the round glossy pass-green DEPLOY button centred (960, 700), 300 px across. From the top edge a dark navy hoodie sleeve and a large hand enter, and the lower edge of a dark beard (beard colour) is visible at the top of the frame, y 0 to 120, x 780 to 1140. Behind, out of focus, the monitor.
+Close-up on the dark console: the round glossy pass-green DEPLOY button centred (960, 700), 300 px across. From the top edge a dark navy hoodie sleeve and a large hand enter, and the chin edge with his short warm-brown beard (beard colour) is visible at the top of the frame, y 0 to 120, x 780 to 1140. Behind, out of focus, the monitor.
 
 ### Forms
 The chef's hand (FILM.cast.chefHand), the beard edge (FILM.cast.chefBeardEdge), the button with a gloss highlight.
