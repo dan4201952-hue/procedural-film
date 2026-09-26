@@ -5,7 +5,7 @@ Where this file and a scene brief disagree on a colour, weight or rule, this fil
 Where this file and `docs/storyboard.md` disagree on a position or a time, the storyboard wins.
 
 This film does not use the skill's hatched-ink house style.
-Its look comes from the client's OktoberFESB logo: a glossy cartoon sticker with a thick navy outline, saturated flat fills, one cel-shade tone, white gloss highlights and golden bubbles.
+Its look comes from the client's OktoberFESB logo: a glossy, polished vector illustration with a thick navy outline, saturated colour rendered with soft gradients, rim light and white gloss highlights, and golden bubbles.
 Sections 1 to 9 below replace the house style for this film.
 
 ## 1. Frame
@@ -122,15 +122,28 @@ All outlines go through `lib.inkPath` so the film keeps the drawn boil, but tune
 | Detail lines (folds, fingers, wood grain, laces) | 2.5 px | outlineSoft |
 | Logo sticker border (the white rim around the OktoberFESB lockup) | 10 px white under a 7 px outline | gloss, outline |
 
-## 4. Tone
+## 4. Tone and rendering
 
-Fills are flat. One cel-shade tone per form (on skin: a 15 percent black overlay, `lib.rgba('#000000', 0.15)`), on the lower-right side (light from the upper left), 15 to 25 percent darker than the base or the named deep colour.
-One or two white gloss highlights per glossy object (glass, beer, bald head, bottle, button): a long soft-cornered stroke on the upper left and a small dot beside it.
-Gradients are allowed in exactly four places: the beer body (beerLight at the top to beerDeep at the bottom), the FESB logo (section 10.9), the "Oktober" and "FESB" lettering (section 10.10), and background light (lamp glow, spotlight, monitor glow, vignette).
-No hatching in this film.
-Golden bubbles are the signature particle: circles 6 to 22 px in gold with a goldDeep 2 px rim and a white highlight dot, rising 40 to 90 px per second with a slight sway.
-Background depth: the far wall and far crowd sit behind a 35 percent `hallDim` haze and a soft radial lamp glow; there is no blur filter.
-Set `post: 0.5` on hall and office shots in the timeline so the engine grain stays subtle.
+The target is the rendering of the client's OktoberFESB logo applied to everything, people included: a polished, semi-realistic vector illustration with volume, not flat cel shading and not chibi.
+Light comes from the upper left (warm, hall lamps); a cooler bounce light from the lower right.
+
+- **Volume by gradients.** Every form is filled with a gradient along the light direction: the lit side about 10 percent lighter than the base, the shadow side 20 to 30 percent darker, with a soft core-shadow band just before the terminator. Round forms (heads, mugs, bellies, knuckles, the bald head) use radial gradients offset to the upper left.
+- **Rim light.** A thin lighter edge (3 to 6 px, the base colour 25 percent lighter or bulb at 40 percent) inside the outline on the shadow side of people, hair and mugs, as in the logo's glass.
+- **Gloss.** Specular highlights on anything shiny: glass and beer (long soft strokes plus dots), the bald head (a soft oval highlight and a smaller hot spot; the star sparkle only on the gleam events), leather (short soft highlights), buttons, eyes.
+- **Soft contact shadows** under feet, mugs and plates, and ambient occlusion where forms meet (under the chin, under the arms, collar, where a mug sits in a hand): a 10 to 20 percent darker soft shape.
+- **Clothing.** Folds as two or three curved detail lines plus a soft shadow shape per fold; seams, collars, cuffs, buttons, laces drawn. Knitted, cotton and leather read differently through their highlights.
+- **Hair and beards.** A gradient volume plus 10 to 30 short strand strokes in the lighter and darker tone; beards get short hair strokes along the growth direction and a soft edge on the cheek line.
+- No hatching anywhere.
+- Golden bubbles are the signature particle: circles 6 to 22 px in gold with a goldDeep 2 px rim and a white highlight dot, rising 40 to 90 px per second with a slight sway.
+- Background depth: the far wall and far crowd sit behind a 35 percent `hallDim` haze and a soft radial lamp glow; there is no blur filter.
+- Set `post: 0.5` on hall and office shots in the timeline so the engine grain stays subtle.
+
+### 4.1 People
+
+- Realistic adult proportions: the head is about 1/7 of the height for the team and the waitress, about 1/6.5 for the chef (sturdy, broad shoulders, a slight belly). No big-head chibi look.
+- Bodies are smooth closed silhouettes per part (torso with chest, shoulders and waist; upper arm with the deltoid, forearm tapering to the wrist; hands with fingers and a thumb; thigh, knee, calf, ankle), overlapped so clothing hides the joints. Never a visible joint disc, ball or capsule end.
+- Faces semi-realistic: almond eyes with a coloured iris, pupil, catch-light, upper lid line and a soft lid shadow; eyebrows as shaped strokes; a nose with a bridge shadow, a lit tip and nostrils; lips with an upper-lip line and a lit lower lip, teeth when grinning; cheekbone, jaw and under-chin shading; ears with inner detail. Men have no eyelash strokes and at most a faint warm cheek tone.
+- Expressions are lively and readable at 300 px figure height: smiles lift the cheeks and crinkle the eyes.
 
 ## 5. Blueprint language (shots 05 and 07)
 
@@ -183,7 +196,7 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 - About 45 to 50 years old: a mature, energetic man, faint forehead lines and slight crow's feet when he smiles, only a touch of grey in the black beard and brows.
 - Light skin (chefSkin). Clean-shaven bald head, round with a strong white gleam on the upper left (a 40 px soft stroke plus a star sparkle that pings on the downbeats in 09).
 - A neat, short, trimmed beard shaped as in the client's reference photo: black with just a light sprinkle of grey (beard, beardLight on the lit side, a few short beardGrey hairs mostly on the chin and sideburns), closely trimmed along the jaw, a little fuller on the chin, the cheek line clean and low, joined to a short moustache; tidy, never bushy. Thick, straight-ish black eyebrows (chefBrow) with a couple of grey hairs. Brown eyes, a strong straight nose, faint forehead lines, and he is almost always smiling: a bright open smile at rest, a big laughing grin with teeth when he performs.
-- Sturdy build, head about 1/6.5 of his height, broad shoulders.
+- Sturdy build, head about 1/6.5 of his height, broad shoulders, a slight belly.
 - Party outfit: white shirt with rolled sleeves, lederhosen suspenders with a cross strap, lederhosen shorts, knee socks, brown shoes.
 - The red bandana (bandana with bandanaDot dots) is tied over the head with the knot and two short tails at the back of the head; the tails flutter on turns.
 - Office (shot 02): only his hand in a dark navy hoodie sleeve and the edge of his chin with the short trimmed beard entering from the top of the frame. The face is never shown before 09.
@@ -258,7 +271,10 @@ On a unit square (0..1, origin top-left):
 
 ### 10.11 Mistakes to avoid
 
-- Hatched shading: this film uses one flat cel tone, never hatching.
+- Hatched shading or flat single-tone fills: this film renders volume with gradients, rim light and gloss, never hatching.
+- Capsule limbs, visible joint circles or white balls at shoulders, elbows and knees: limbs are continuous tapered shapes and clothing covers the joints.
+- Chibi proportions or doll faces with eyelashes and blush on the men: realistic proportions, semi-realistic faces.
+- The chef's knee socks as thick tubes or his lederhosen as a shapeless barrel: fitted leather shorts ending above the knee with a front flap, suspenders with the H-bar, slim knee socks over the calf.
 - A German flag or a checkerboard: Bavarian bunting is blue and white lozenges.
 - A beer stein with a lid or a pint glass: the mug is the glass Maß with a D handle.
 - `OctoberFESB` with a c: the brand is `OktoberFESB`.
