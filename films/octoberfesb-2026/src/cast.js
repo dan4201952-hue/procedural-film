@@ -897,7 +897,7 @@
     // moustache over the mouth
     if (F.moustache) {
       const c = F.moustache;
-      const s = c.big ? 1 : c.thin ? 0.62 : 0.8;
+      const s = c.big ? 1 : c.thin ? 0.62 : c.trim ? 0.74 : 0.8;
       const mt = ny + hh * 0.05;
       const pts = [[mx, mt], [mx + hw * 0.1 * s, mt - hh * 0.012], [mx + hw * 0.24 * s, mt + hh * 0.03], [mx + hw * 0.3 * s, mt + hh * 0.1 * s], [mx + hw * 0.2 * s, mt + hh * 0.075], [mx + hw * 0.08 * s, mt + hh * 0.07], [mx, mt + hh * 0.05], [mx - hw * 0.08 * s, mt + hh * 0.07], [mx - hw * 0.2 * s, mt + hh * 0.075], [mx - hw * 0.3 * s, mt + hh * 0.1 * s], [mx - hw * 0.24 * s, mt + hh * 0.03], [mx - hw * 0.1 * s, mt - hh * 0.012]];
       fInk(g, pts, lw * 0.9, P.outline, seed + 51, true, c.color);
@@ -1250,10 +1250,9 @@
     }
     // beard mass (live) before the features
     if (chef) {
-      const beard = [[-0.5, -0.02], [-0.53, 0.25], [-0.44, 0.54], [-0.24, 0.72], [0, 0.78], [0.24, 0.72], [0.44, 0.54], [0.53, 0.25], [0.5, -0.02], [0.4, 0.12], [0.3, 0.22], [0.14, 0.2], [0, 0.19], [-0.14, 0.2], [-0.3, 0.22], [-0.4, 0.12]];
-      R.shaded(HM(beard, true), P.beard, 330, SHADE_DEEP, 0.16);
-      R.line(HM([[0.22, 0.52], [0.3, 0.62]], true), 331, { color: P.beardGrey, alpha: 0.9 });
-      R.line(HM([[-0.12, 0.6], [-0.06, 0.7]], true), 332, { color: P.beardGrey, alpha: 0.9 });
+      // a short, neatly trimmed beard along the jaw and chin (about 12 px at an 800 px figure)
+      R.shaded(HM(CHEF_BEARD, true), P.beard, 330, SHADE_DEEP, 0.14);
+      R.line(HM([[0.27, 0.49], [0.33, 0.455]], true), 331, { color: P.beardGrey, alpha: 0.9 });
     } else if (st.spec && st.spec.beard === 'stubble') {
       R.fill(HM([[-0.49, 0.04], [-0.47, 0.28], [-0.34, 0.47], [-0.16, 0.55], [0, 0.57], [0.16, 0.55], [0.34, 0.47], [0.47, 0.28], [0.49, 0.04], [0.38, 0.2], [0.2, 0.2], [0.12, 0.33], [0, 0.35], [-0.12, 0.33], [-0.2, 0.2], [-0.38, 0.2]], true), L.rgba(hairOf(st.hairColor), 0.24));
     } else if (st.spec && st.spec.beard === 'short') {
@@ -1380,7 +1379,7 @@
   }
   function drawChefHeadBack(R, B, J, st, H, HM) {
     // beard sides peeking out at the jaw
-    for (const e of [-1, 1]) R.shaded(HM([[e * 0.44, 0.08], [e * 0.54, 0.3], [e * 0.44, 0.56], [e * 0.3, 0.5], [e * 0.4, 0.26]]), P.beard, 380 + e, SHADE_DEEP, 0.2);
+    for (const e of [-1, 1]) R.shaded(HM([[e * 0.47, 0.06], [e * 0.52, 0.22], [e * 0.46, 0.38], [e * 0.36, 0.47], [e * 0.4, 0.34], [e * 0.44, 0.2]]), P.beard, 380 + e, SHADE_DEEP, 0.2);
     if (st.bandana === 'on') {
       R.shape(HM(bandanaPts(false)), P.bandana, 383, { shade: { color: SHADE, side: 'right', frac: 0.12 } });
       for (const d of BANDANA_DOTS) R.dot(H(d[0] * 0.95, d[1] * 0.9 + 0.08), B.headW * 0.028, P.bandanaDot);
@@ -1426,7 +1425,9 @@
     R.ctx.drawImage(L0.c, p[0] - L0.q * 0.6 * sx, p[1] - L0.q * 0.6 * sy, L0.q * 1.2 * sx, L0.q * 1.2 * sy);
   }
   function octoCanvas(size) {
-    const S = FILM.S || 1, q = bucket(size);
+    // one bucket for every tee: props.lockup costs ~20 ms a call and its line boils with lib.T, so it
+    // is drawn at most once per boil drawing and scaled to each tee
+    const S = FILM.S || 1, q = 160;
     const lk = PR().lockup;
     return {
       q,
@@ -1435,7 +1436,7 @@
         const cv = newCanvas(q * 1.3 * S, q * 1.1 * S);
         const g = cv.getContext('2d');
         g.scale(S, S);
-        if (typeof lk === 'function') lk(g, q * 0.65, q * 0.55, q / 900, { mug: 1, foam: 1, wheat: 1, hops: 1, word: 1, year: 1, rim: 1, bubbles: 0, t: 0, sweep: 0 });
+        if (typeof lk === 'function') lk(g, q * 0.65, q * 0.55, q / 900, { mug: 1, foam: 1, wheat: 1, hops: 1, word: 1, year: 1, rim: 1, bubbles: 0, t: 0, sweep: 0, boil: false });
         return cv;
       }),
     };
@@ -1838,10 +1839,14 @@
     return p;
   }
 
+  const CHEF_BEARD = [
+    [-0.515, 0.02], [-0.51, 0.2], [-0.455, 0.36], [-0.315, 0.5], [-0.15, 0.575], [0, 0.595], [0.15, 0.575], [0.315, 0.5], [0.455, 0.36], [0.51, 0.2], [0.515, 0.02],
+    [0.435, 0.05], [0.43, 0.2], [0.375, 0.32], [0.27, 0.41], [0.21, 0.37], [0.175, 0.335], [0.13, 0.45], [0, 0.472], [-0.13, 0.45], [-0.175, 0.335], [-0.21, 0.37], [-0.27, 0.41], [-0.375, 0.32], [-0.43, 0.2], [-0.435, 0.05],
+  ];
   const CHEF_FACE = {
     eyeY: 0.0, eyeX: 0.2, eyeRx: 0.085, eyeRy: 0.083, pupil: 0.056, lashes: false, brow: P.beard, browW: 0.07, browLift: 0.045,
     mouthY: 0.36, mouthW: 0.16, skin: P.chefSkin, glasses: false, lines: true, blush: L.rgba(P.confettiD, 0.22), chef: true,
-    moustache: { color: P.beard, big: true, grey: P.beardGrey }, seed: 77,
+    moustache: { color: P.beard, trim: true }, seed: 77,
   };
 
   function chef(ctx, x, y, h, pose, o) {
@@ -1949,28 +1954,31 @@
     ctx.restore();
   }
 
+  /** the chef's chin with his short trimmed beard, entering from the top of the frame; (x, y) is
+   *  the bottom of the beard, w the width of the jaw; the face above stays off frame (shot 02) */
   function chefBeardEdge(ctx, x, y, w, o) {
     o = o || {};
     w = num(w, 360);
     const alpha = o.alpha == null ? 1 : clamp(o.alpha);
     if (alpha <= 0) return;
     const R = makeRig(ctx, x, y, w, { line: o.line || 'hero', draw: o.draw, flip: o.flip }, 'chefBeard', 360);
-    // local units: 1 % of w; bottom edge at y = 0
-    const pts = [[-50, -75], [50, -75], [51, -40]];
-    const n = 9;
-    for (let i = 0; i <= n; i++) {
-      const u = i / n;
-      const xx = lerp(48, -48, u);
-      const bow = Math.sqrt(Math.max(0, 1 - Math.pow((xx / 50), 2)));
-      const scal = 3.2 * Math.abs(sin(u * PI * 4.5));
-      pts.push([xx, -34 + 34 * bow - scal]);
-    }
-    pts.push([-51, -40]);
+    // local units: 1 % of w; the jaw is the lower half of an ellipse, the beard a 7 to 12 unit band on it
+    const arc = (rx, ry, cy, n, rev) => {
+      const out = [];
+      for (let i = 0; i <= n; i++) {
+        const a = (rev ? 1 - i / n : i / n) * PI;
+        out.push([cos(a) * rx, cy + sin(a) * ry]);
+      }
+      return out;
+    };
     ctx.save();
     if (alpha < 1) ctx.globalAlpha *= alpha;
-    R.shaded(pts, P.beard, 1, SHADE_DEEP, 0.18);
-    const strands = [[[-22, -30], [-16, -8]], [[10, -40], [14, -14]], [[30, -34], [26, -16]], [[-36, -48], [-32, -28]], [[-4, -26], [0, -4]]];
-    strands.forEach((sl, i) => R.line(sl, 2 + i, { color: i % 2 ? P.beardGrey : L.mix(P.beard, P.gloss, 0.18), alpha: 0.9, width: R.dw * 1.2 }));
+    R.shaded([[-51, -170], [51, -170], ...arc(51, 72, -72, 16, false).slice(0, 17)], P.chefSkin, 1, SHADE_SKIN, 0.22);
+    const band = [...arc(51, 72, -72, 18, false), ...arc(44, 60, -72, 18, true)];
+    R.shaded(band, P.beard, 2, SHADE_DEEP, 0.14);
+    R.line([[-20, -13], [-14, -9]], 3, { color: P.beardGrey, width: R.dw * 1.2 });
+    R.line([[12, -8], [19, -12]], 4, { color: P.beardGrey, width: R.dw * 1.2 });
+    R.gloss([-30, -40], [-22, -30], 1.4, 0.4);
     ctx.restore();
   }
 
