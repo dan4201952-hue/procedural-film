@@ -51,3 +51,21 @@ Common rules for every function:
 | `waitress(ctx, x, y, h, pose, o)` | A waitress (art bible 10.2). `o.who` 'liesl' (default) \| 'resi' \| 'vroni' \| 'gretl'. She carries ten Maß, five per hand, unless `o.carry` is 'plate' (a plate of food on the raised right palm, `o.plate` 'knuckle' \| 'pretzels' \| 'sausages') or 'none'. `pose` `{ name, t }`: 'walk' (t seconds, a step on every beat at 120 bpm), 'stand'. `o.heroMug` true puts the FESB-logo mug at the front of her right-hand fan (Liesl in shot 06). `o.facing` 1 right (default) or -1. Returns `{ fanL: [x, y], fanR: [x, y] }`. |
 | `tshirt(ctx, x, y, s, o)` | A flying or held t-shirt. `o.design` 'jersey' \| 'octo', `o.view` 'front' \| 'back', `o.flap` 0..1 sleeve flap phase, `o.rot`. (x, y) is its centre, s its width. |
 | `jerseyBack(ctx, x, y, w, o)` | The jersey back print alone (FESB over a huge 9) for close-ups, `o.gleam` 0..1. |
+
+## Additions and conventions (as built)
+
+Props (`src/props.js`):
+- `mug` also takes `crown`, `width`, `dimples`, and returns `top` (the foam or beer top). With `alpha: 0` it returns the anchors without drawing.
+- `caption`: `y` is the **baseline**. Extra options `arch`, `squeeze`, `maxW`, `border`, `sweep` (0..1 gloss sweep), `ribbon` (the "Релиз FESB 9" ribbon for shot 14).
+- `table` returns `{ top, seatFront, seatBack, floor }`. `shape`'s shade also accepts `{ dx, dy }`. `LINE.taperOpen` is `[6, 10]` for open strokes.
+- `tap`: (x, y) is the nozzle tip; at G1 use `h` ≈ 300.
+- `hallBack`: variant 'counter' has its counter top at y 866 to 905 (the G1 mug base at y 900 sits on it); variant 'door' has the opening at x 690 to 1230 and the floor at y 880; `camX` moves the wall at 0.6× and is clamped to ±800. It caches three boil drawings per variant, so the first frames of a shot cost more.
+- `FILM.props._` is private; do not call it.
+
+Cast (`src/cast.js`):
+- `FILM.cast.CHEF_TALL = 0.95`: draw the chef at `h × CHEF_TALL` when he stands among teammates drawn at `h`.
+- TEAM[0..3] are the four named teammates (tallest 1.12, tall 1.07, tall and broad 1.06, stocky 0.94); teammates are drawn at `h × spec.tall` automatically.
+- `person` extra poses and options: `crouch` pose, `pose.crouch` / `o.crouch` to crouch while turning, `o.upper` (waist up, for people behind a table), `o.shirt` (the shirt hugged in `catch`), `o.gleam` (sweep on the jersey back print), `o.shadow: false` (no contact shadow), and a `clap` pose.
+- `waitress` also has the `clap` pose; waitresses are drawn at `h × 0.96–1.06` by who (Liesl 1.0).
+- `serveArm(ctx, x, y, s, o)`: a waitress's puffed sleeve, forearm and hand holding a plate entering from the frame edge; (x, y) is the plate centre, the plate is 300 px wide at s = 1; `o.plate` 'knuckle' \| 'pretzels' \| 'sausages', `o.from` the direction toward her shoulder in radians (0: the arm comes in from the right, π: from the left; about −2.4 for top-left).
+- L and R mean screen sides of an unflipped figure; `fanL` is always the left fan on screen.
