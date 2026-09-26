@@ -26,22 +26,23 @@
   const sd = (...k) => FILM.lib.hash(ID, ...k) & 0x7fffffff;
 
   // --- staging -------------------------------------------------------------------------------
-  const CHEF_X0 = 700, CHEF_X1 = 1200, CHEF_Y = 700, CHEF_H = 620;
-  const TABLE_A_X = 960, TABLE_A_Y = 420, TABLE_A_W = 2000, TABLE_A_H = 300;
-  const TABLE_B_X = 960, TABLE_B_Y = 830, TABLE_B_W = 2060, TABLE_B_H = 430;
-  const CRATE_X = 640, CRATE_Y = 752, CRATE_W = 150;
-  // table() (props.js) seats a bench's front row at y + legs*0.42; legs defaults to 170. Both
-  // tables use that default explicitly so this stays true, and the seat y below never has to wait
-  // on table()'s own return value (table B is drawn after the chef, for depth order).
-  const LEGS = 170;
-  const SEAT_A_Y = TABLE_A_Y + LEGS * 0.42;
-  const SEAT_B_Y = TABLE_B_Y + LEGS * 0.42;
+  // hallBack's 'hall' variant meets the floor at y 700 (wall panelling runs 160-700 above it), so
+  // every table's legs are sized to land its feet at or past that line — nothing stands in the wall.
+  const CHEF_X0 = 700, CHEF_X1 = 1200, CHEF_Y = 780, CHEF_H = 360;
+  const TABLE_A_X = 960, TABLE_A_Y = 560, TABLE_A_W = 2000, TABLE_A_LEGS = 140, TABLE_A_H = 260;
+  const TABLE_B_X = 960, TABLE_B_Y = 860, TABLE_B_W = 2060, TABLE_B_LEGS = 180, TABLE_B_H = 380;
+  const CRATE_X = 660, CRATE_Y = 760, CRATE_W = 130;
+  // table() (props.js) seats a bench's front row at y + legs*0.42. Precomputed so the seat y below
+  // never has to wait on table()'s own return value (table B is drawn after the chef, for depth order).
+  const SEAT_A_Y = TABLE_A_Y + TABLE_A_LEGS * 0.42;
+  const SEAT_B_Y = TABLE_B_Y + TABLE_B_LEGS * 0.42;
 
   // --- timing (shot-local seconds; T = 18.5 + t) ----------------------------------------------
   const THROW_STEP = 0.25;              // one 8th at 120 bpm
   const N_THROWS = 15;
   const THROW_WIN = 0.18;               // the 'throw' pose pulse, centred on the release instant
   const CATCH_DUR = 0.3;                // arms-up -> hug, ending exactly on the catch beat
+  const CATCH_SETTLE = 0.35;            // how long the hug is held before sitting back down
   const FLIGHT = 0.5;                   // one beat of flight, throw -> catch
   const APEX = 250;                     // px above the straight line, storyboard 10
   const SPIN_START = 2.1, SPIN_END = 2.9; // T 20.6-21.4, bracketing the T 21.0 spin
@@ -137,18 +138,19 @@
       // 3. the four waitresses at the back, clapping --------------------------------------------
       const WHO = ['liesl', 'resi', 'vroni', 'gretl'];
       const WX = [520, 780, 1140, 1400];
-      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], 250, 250, { name: 'clap', t: Tg }, { who: WHO[i] });
+      for (let i = 0; i < 4; i++) CAST.waitress(ctx, WX[i], 500, 210, { name: 'clap', t: Tg }, { who: WHO[i] });
 
-      // helper: pose for a seated teammate — idle until their catch window, then arms-up -> hug,
-      // holding the caught shirt for the rest of the shot.
+      // helper: pose for a seated teammate — idle on the bench until their catch window (arms-up ->
+      // hug, standing briefly to catch it, per FILM.cast.person's 'catch' pose), then back down onto
+      // the bench for the rest of the shot.
       function seatPose(s) {
-        const cEnd = catchTime(s.throwI), cStart = cEnd - CATCH_DUR;
-        if (t < cStart) return { pose: { name: 'sit' }, o: {} };
+        const cEnd = catchTime(s.throwI), cStart = cEnd - CATCH_DUR, cSettled = cEnd + CATCH_SETTLE;
+        if (t < cStart || t >= cSettled) return { pose: { name: 'sit' }, o: {} };
         return { pose: { name: 'catch', k: clamp01((t - cStart) / CATCH_DUR) }, o: { shirt: s.design } };
       }
 
       // 4. table A (far side): 8 seats -----------------------------------------------------------
-      PROPS.table(ctx, TABLE_A_X, TABLE_A_Y, TABLE_A_W, { depth: 30, legs: LEGS, bench: 'front', seed: sd('tblA'), boil: L.boil(Tg) });
+      PROPS.table(ctx, TABLE_A_X, TABLE_A_Y, TABLE_A_W, { depth: 24, legs: TABLE_A_LEGS, bench: 'front', seed: sd('tblA'), boil: L.boil(Tg) });
       for (const s of G.seats) {
         if (s.table !== 'A') continue;
         const { pose, o } = seatPose(s);
@@ -198,7 +200,7 @@
       }
 
       // 8. table B (near side): 7 seats, drawn last so it reads as the closest row -----------------
-      PROPS.table(ctx, TABLE_B_X, TABLE_B_Y, TABLE_B_W, { depth: 34, legs: LEGS, bench: 'front', seed: sd('tblB'), boil: L.boil(Tg) });
+      PROPS.table(ctx, TABLE_B_X, TABLE_B_Y, TABLE_B_W, { depth: 34, legs: TABLE_B_LEGS, bench: 'front', seed: sd('tblB'), boil: L.boil(Tg) });
       for (const s of G.seats) {
         if (s.table !== 'B') continue;
         const { pose, o } = seatPose(s);

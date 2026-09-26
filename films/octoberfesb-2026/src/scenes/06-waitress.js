@@ -50,11 +50,11 @@
       })),
       mugSeed: sd('tablemug', i),
     }));
-    // Resi, Vroni and Gretl cross right to left at the back, staggered
+    // Resi, Vroni and Gretl cross right to left at the back, staggered, above the tables' row
     const crossers = [
-      { who: 'resi', carry: 'mugs', plate: null, x0: 1520, x1: -200, y: 800, ph: 0.1 },
-      { who: 'vroni', carry: 'plate', plate: 'sausages', x0: 1740, x1: 30, y: 800, ph: 0.42 },
-      { who: 'gretl', carry: 'plate', plate: 'pretzels', x0: 1960, x1: 260, y: 800, ph: 0.71 },
+      { who: 'resi', carry: 'mugs', plate: null, x0: 1520, x1: -200, y: 680, ph: 0.1 },
+      { who: 'vroni', carry: 'plate', plate: 'sausages', x0: 1740, x1: 30, y: 680, ph: 0.42 },
+      { who: 'gretl', carry: 'plate', plate: 'pretzels', x0: 1960, x1: 260, y: 680, ph: 0.71 },
     ];
     // foam flecks kicked up on Liesl's footfall beats (T 10.0 .. 12.0, every 0.5 s)
     const flecks = [];
@@ -80,6 +80,7 @@
       const clamp = L.clamp, lerp = L.lerp;
       const G = geo(L);
       const T = info.T;
+      const tw = L.onTwos(t); // characters move on twos; the camera pan itself stays at 24 fps
 
       // ---- camera pan (background plane only; Liesl and the foreground stay screen-fixed) ----
       const camX = CAMX_MAX * E.outCubic(clamp(t / info.dur));
@@ -89,9 +90,9 @@
       // ---- Liesl: screen-fixed walk, feet x 300 -> 1480, arriving on the 8th at T 12.25 ----
       const ARRIVE = 2.25; // T 12.25
       const feetX0 = 300, feetX1 = 1480;
-      const walkP = E.outCubic(clamp(t / ARRIVE));
+      const walkP = E.outCubic(clamp(tw / ARRIVE));
       const lieslX = lerp(feetX0, feetX1, walkP);
-      const walkClock = Math.min(t, 2.0); // last footstep beat T 12.0; the last 0.25 s glides to a settled stance
+      const walkClock = Math.min(tw, 2.0); // last footstep beat T 12.0; the last 0.25 s glides to a settled stance
 
       // =========================================================================
       // 1. hall background
@@ -99,39 +100,59 @@
       PR.hallBack(ctx, { variant: 'hall', camX, dim: 0, t: T });
 
       // =========================================================================
-      // 2. bunting and garlands across the ceiling
+      // 2. bunting and garlands across the ceiling — a static wide strip, cached once and panned
       // =========================================================================
-      for (let i = 0; i < G.segs.length; i++) {
-        const [x0, x1] = G.segs[i];
-        PR.bunting(ctx, bgX(x0), 176, bgX(x1), 176, 42, { t: T, seed: sd('bunt', i), line: 'background' });
-      }
-      for (let i = 0; i < G.segs.length; i++) {
-        const [x0, x1] = G.segs[i];
-        PR.garland(ctx, bgX(x0), 236, bgX(x1), 236, 60, { t: T, seed: sd('garl', i), glow: 1 });
-      }
+      const DECO_X0 = -320, DECO_X1 = 2470, DECO_W = DECO_X1 - DECO_X0, DECO_H = 340;
+      const deco = LIB.cached(['waitress-deco', info.S].join('|'), () => {
+        const c = FILM.makeCanvas(Math.max(1, Math.round(DECO_W * info.S)), Math.max(1, Math.round(DECO_H * info.S)));
+        const g = c.getContext('2d');
+        g.scale(info.S, info.S);
+        g.translate(-DECO_X0, 0);
+        for (let i = 0; i < G.segs.length; i++) {
+          const [x0, x1] = G.segs[i];
+          PR.bunting(g, x0, 176, x1, 176, 42, { t: 0, seed: sd('bunt', i), line: 'background' });
+        }
+        for (let i = 0; i < G.segs.length; i++) {
+          const [x0, x1] = G.segs[i];
+          PR.garland(g, x0, 236, x1, 236, 60, { t: 0, seed: sd('garl', i), glow: 1 });
+        }
+        return c;
+      });
+      ctx.drawImage(deco, 0, 0, deco.width, deco.height, DECO_X0 - shift, 0, DECO_W, DECO_H);
 
       // =========================================================================
       // 3. Resi, Vroni and Gretl crossing at the back (~0.6 Liesl height)
       // =========================================================================
       const CROSS_H = 492; // 0.6 * 820
       for (const c of G.crossers) {
-        const wx = lerp(c.x0, c.x1, clamp(t / info.dur));
+        const wx = lerp(c.x0, c.x1, clamp(tw / info.dur));
         const sx = bgX(wx);
-        CAST.waitress(ctx, sx, c.y, CROSS_H, { name: 'walk', t: t + c.ph }, {
+        CAST.waitress(ctx, sx, c.y, CROSS_H, { name: 'walk', t: tw + c.ph }, {
           who: c.who, facing: -1, carry: c.carry, plate: c.plate || undefined, line: 'secondary',
         });
       }
 
       // =========================================================================
-      // 4. middle-depth tables with teammates tracking Liesl
+      // 4. middle-depth tables — a static wide strip, cached once and panned
       // =========================================================================
+      const TAB_X0 = 300, TAB_X1 = 2380, TAB_W = TAB_X1 - TAB_X0, TAB_Y0 = 560, TAB_Y1 = 960, TAB_H = TAB_Y1 - TAB_Y0;
+      const tablesImg = LIB.cached(['waitress-tables', info.S].join('|'), () => {
+        const c = FILM.makeCanvas(Math.max(1, Math.round(TAB_W * info.S)), Math.max(1, Math.round(TAB_H * info.S)));
+        const g = c.getContext('2d');
+        g.scale(info.S, info.S);
+        g.translate(-TAB_X0, -TAB_Y0);
+        for (const tb of G.tables) {
+          const table = PR.table(g, tb.wx, tb.y, tb.w, { bench: 'back', line: 'secondary', seed: tb.mugSeed });
+          PR.mug(g, tb.wx + tb.w * 0.2, table.top, 92, { fill: 0.85, foam: 1.05, bubbles: true, t: 0, line: 'background', seed: tb.mugSeed });
+        }
+        return c;
+      });
+      ctx.drawImage(tablesImg, 0, 0, tablesImg.width, tablesImg.height, TAB_X0 - shift, TAB_Y0, TAB_W, TAB_H);
+
+      // teammates ride the same pan as their table but are drawn fresh (their look tracks Liesl)
       const MATE_H = 600;
       for (const tb of G.tables) {
         const sx = bgX(tb.wx);
-        const table = PR.table(ctx, sx, tb.y, tb.w, { bench: 'back', line: 'secondary', seed: tb.mugSeed });
-        PR.mug(ctx, sx + tb.w * 0.2, table.top, 92, {
-          fill: 0.85, foam: 1.05, bubbles: true, t: T, line: 'background', seed: tb.mugSeed,
-        });
         for (const m of tb.mates) {
           const mx = sx + m.dx;
           const look = clamp((lieslX - mx) / 260, -1, 1);
@@ -167,10 +188,19 @@
       }
 
       // =========================================================================
-      // 6. foreground table edge + pretzel, bottom-left, screen-fixed (closest plane)
+      // 6. foreground table edge + pretzel, bottom-left, screen-fixed and identical every frame
       // =========================================================================
-      const fg = PR.table(ctx, -160, 1015, 900, { bench: 'none', line: 'hero', depth: 46, seed: sd('fgtable') });
-      PR.pretzel(ctx, 130, fg.top - 4, 220, { rot: -0.08, line: 'hero', seed: sd('fgpretzel') });
+      const FG_W = 640, FG_H = 340;
+      const fgImg = LIB.cached(['waitress-fg', info.S].join('|'), () => {
+        const c = FILM.makeCanvas(Math.max(1, Math.round(FG_W * info.S)), Math.max(1, Math.round(FG_H * info.S)));
+        const g = c.getContext('2d');
+        g.scale(info.S, info.S);
+        g.translate(0, -(1080 - FG_H));
+        const fg = PR.table(g, -160, 1015, 900, { bench: 'none', line: 'hero', depth: 46, seed: sd('fgtable') });
+        PR.pretzel(g, 130, fg.top - 4, 220, { rot: -0.08, line: 'hero', seed: sd('fgpretzel') });
+        return c;
+      });
+      ctx.drawImage(fgImg, 0, 0, fgImg.width, fgImg.height, 0, 1080 - FG_H, FG_W, FG_H);
     },
   });
 })();

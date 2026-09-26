@@ -79,7 +79,7 @@
           ctx.fill();
           ctx.restore();
 
-          const flipK = t < B_PRESS ? 0 : clamp((t - B_PRESS) / (6 * FR));
+          const flipK = t < B_PRESS ? 0 : clamp((t - B_PRESS) / (6 * FR) + 1 / 6);
           // pre-press: a few very soft, low-contrast bars (an out-of-focus code screen)
           if (flipK < 1) {
             ctx.save();
@@ -187,7 +187,7 @@
       // ===========================================================================
       const capT = 1.0;
       if (t >= capT) {
-        const pop = clamp((t - capT) / (4 * FR));
+        const pop = clamp((t - capT) / (4 * FR) + 1 / 4);
         props.caption(ctx, 'Релиз FESB 9', 960, 330, 120, { align: 'center', style: 'split', pop });
       }
     },
