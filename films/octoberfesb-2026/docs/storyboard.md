@@ -350,13 +350,13 @@ T 16.0: a record scratch, then salsa: clave 3-2, congas tumbao, piano montuno, b
 T 18.5 to 22.5, illustrated, cut.
 
 ### Composition
-The hall wide: the chef dancing along the aisle between two long tables, a crate stencilled "OktoberFESB" at his feet. Teammates on benches on both sides. Bunting and garlands above.
+The hall wide: the chef dancing along the aisle between two long tables, a crate stencilled "OktoberFESB" at his feet. All fifteen teammates on benches on both sides of the aisle. Bunting and garlands above.
 
 ### Forms
 Art bible 10.1, 10.3, 10.8.
 
 ### Motion
-T 18.5 to 22.5: the chef dances the salsa basic along the aisle (moving from x 700 to x 1200), and on every beat from T 19.0 to T 22.0 (seven throws) he pulls a t-shirt from the crate and throws it with a flourish; each t-shirt flies a parabolic arc (apex 250 px above the throw point, 1 beat of flight) to a different teammate who catches it on the next beat. Alternate jersey (fesbBlue) and OktoberFESB tee (white). T 21.0: one right-hand spin, bandana tails flying.
+T 18.5 to 22.5: the chef dances the salsa basic along the aisle (moving from x 700 to x 1200) and throws all fifteen t-shirts, one on every 8th: throw i (i = 0..14) leaves his hand at T 18.5 + 0.25·i (the first is already leaving on the first frame, the last at T 22.0). Each flies a parabolic arc (apex 250 px above the throw point, one beat of flight) to a different teammate, who catches it at T 19.0 + 0.25·i (the last exactly on the final frame). Alternate jersey (fesbBlue) and OktoberFESB tee (white). T 21.0: one right-hand spin between throws, bandana tails flying.
 
 ### Overlays
 Motion arcs: a dashed gold trail behind each flying t-shirt, 2.5 px, 14 on 10 off, fading over 6 frames.
@@ -371,7 +371,7 @@ Cut to 11 on T 22.5.
 Art bible 10.1 (salsa), 10.8.
 
 ### Sound
-Salsa continues. Each throw is a whoosh; each catch a cloth flap and a cowbell hit.
+Salsa continues. Each throw (on 8ths T 18.5 to 22.0) is a short whoosh; each catch (on 8ths T 19.0 to 22.5) a cloth flap; the cowbell stays on the beat.
 
 ---
 
@@ -380,13 +380,13 @@ Salsa continues. Each throw is a whoosh; each catch a cloth flap and a cowbell h
 T 22.5 to 25.0, illustrated, cut.
 
 ### Composition
-Nine teammates standing in a row across the frame, all in fesbBlue jerseys, seen from the front at first; jerseys' chests show the FESB logo. The chef at the right edge, arms crossed, grinning.
+All fifteen teammates in a team-photo formation, all in fesbBlue jerseys, seen from the front at first (chests show the FESB logo): a back row of eight standing, a front row of seven crouching in the gaps below them, so every back is visible when they turn. The formation spans x 200 to 1640; the chef stands at the right edge (x 1760), arms crossed, grinning.
 
 ### Forms
 Art bible 10.3, 10.8.
 
 ### Motion
-T 22.5 to 23.0: they pull the jerseys on (pop). T 23.5 to 24.0: they turn around one after another on 16ths (left to right), revealing on each back "FESB" over a huge "9". T 24.0 to 25.0: all nine hold, the nines gleam in sequence, the chef nods.
+T 22.5 to 23.0: they pull the jerseys on (pop). T 23.0 to 24.0: they turn around in a left-to-right wave, one column per 16th: column j (j = 0..7, a back-row person plus the front-row person in front of them) turns at T 23.0 + 0.125·j, revealing on each back "FESB" over a huge "9". T 24.0 to 25.0: all fifteen hold, the nines gleam in sequence, the chef nods.
 
 ### Overlays
 None.
@@ -401,7 +401,7 @@ Cut to 12 on T 25.0.
 Art bible 10.8.
 
 ### Sound
-Salsa; each turn is a brass stab on 16ths (rising); T 24.0 a full brass hit.
+Salsa; each column's turn is a brass stab on 16ths T 23.0 to 23.875 (eight, rising); T 24.0 a full brass hit.
 
 ---
 
