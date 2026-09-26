@@ -89,6 +89,9 @@ This film uses them only on the blueprint plate (section 5). Hall and office sho
 | hairBrown | #6B3F22 | Hair |
 | hairBlack | #1E1A1A | Hair |
 | hairRed | #B5502A | Hair |
+| hairFair | #9C7651 | Light-brown (русый) hair |
+| hairAsh | #CDAE78 | Lighter ash-fair hair |
+| hairChestnut | #7E5433 | Chestnut, fair-brown (русый шатен) hair |
 | crackling | #C9782F | Pork knuckle crust |
 | crust | #8E4A1C | Crust shade, pretzel shade |
 | meat | #E7A77A | Knuckle meat where it is cut |
@@ -214,7 +217,13 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 
 - Fifteen teammates (the real team is 15 people plus the chef), all white men (skinA and skinB only).
 - Ages vary: nine look 30 to 40, four look in their twenties, and two look older (45 to 55, greying hair, a few forehead lines). There are always more younger men than older ones.
-- Vary them by hair (short, buzz cut, side part, curly, quiff, long-ish tied back, receding for an older one; hairBlonde, hairBrown, hairBlack, hairRed, grey for the older ones), facial hair (clean-shaven, stubble, short beard, moustache; about a quarter with stubble or a short beard; nobody else is bald, so the chef's bald head, short black beard and red bandana stay unique), glasses on three or four, and build (slim, average, stocky).
+- Four named teammates are fixed, from the user's description of the real team:
+  - **The tallest** (height 1.12 of the team average): light-brown hair (hairFair), 33 years old, slim-athletic.
+  - **Tall** (1.07): lighter, ash-fair hair (hairAsh), a little shorter than the tallest, slim.
+  - **Tall and stocky** (1.06): dark hair (hairBlack or a deep brown), broad and solid build.
+  - **Stocky and shorter** (0.94): fair-brown chestnut hair (hairChestnut), broad build.
+- The other eleven vary height from 0.92 to 1.04 and build from slim to heavy-set, so the row of fifteen reads as fifteen different men, not one repeated body.
+- Vary them by hair (short, buzz cut, side part, curly, quiff, long-ish tied back, receding for an older one; hairFair, hairAsh, hairChestnut, hairBrown, hairBlack, hairBlonde, a hairRed at most once, grey for the older ones), facial hair (clean-shaven, stubble, short beard, moustache; about a quarter with stubble or a short beard; nobody else is bald, so the chef's bald head, short black beard and red bandana stay unique), glasses on three or four.
 - Nobody is bald except the chef.
 - Before the t-shirts: casual shirts and sweaters in muted colours (grey, olive, mustard, maroon, denim).
 - After the t-shirts: every teammate in the fesbBlue jersey tee (10.8).
