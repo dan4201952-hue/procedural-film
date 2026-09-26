@@ -188,7 +188,7 @@
       const capT = 1.0;
       if (t >= capT) {
         const pop = clamp((t - capT) / (4 * FR) + 1 / 4);
-        props.caption(ctx, 'Релиз FESB 9', 960, 330, 120, { align: 'center', style: 'split', pop });
+        props.caption(ctx, 'Релиз FESB 9', 960, 880, 120, { align: 'center', style: 'split', pop });
       }
     },
   });
