@@ -1381,7 +1381,16 @@
     const skull = QM(skullPts(H.kind, H.build));
     g.beginPath();
     crTrace(g, skull, true);
-    g.fillStyle = radRamp(g, 0, -0.05 * hh, hw * 0.56, sk, 0.05);
+    if (wt) {
+      // the women: one smooth skin ramp from the lit upper left, no rim band across the lower face
+      const gx = -0.14 * hw, gy = -0.16 * hh;
+      const sg0 = g.createRadialGradient(gx, gy, 0, gx, gy, hw * 0.95);
+      sg0.addColorStop(0, sk.hi);
+      sg0.addColorStop(0.3, sk.lit);
+      sg0.addColorStop(0.7, sk.base);
+      sg0.addColorStop(1, mix(sk.base, sk.mid, 0.6));
+      g.fillStyle = sg0;
+    } else g.fillStyle = radRamp(g, 0, -0.05 * hh, hw * 0.56, sk, 0.05);
     g.fill();
     g.save();
     g.beginPath();
