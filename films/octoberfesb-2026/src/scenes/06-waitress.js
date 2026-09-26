@@ -43,7 +43,9 @@
       wx,
       y: 760,
       w: 470,
-      mates: [0, 1].map((slot) => ({
+      // 6 upper-body teammates total (2 at the first and third tables, 1 at the others) keeps the
+      // crowd lively without drawing more full figures than the composition needs
+      mates: (i % 2 === 0 ? [0, 1] : [0]).map((slot) => ({
         dx: slot === 0 ? -100 : 100,
         spec: CAST.TEAM[(sd('mate', i, slot) >>> 0) % CAST.TEAM.length],
         ph: ((sd('matePhase', i, slot) >>> 0) % 1000) / 1000,

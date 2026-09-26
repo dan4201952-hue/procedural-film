@@ -185,7 +185,7 @@
         // =====================================================================
         if (t >= T_CLINK) {
           const dt = t - T_CLINK;
-          PR.sparkle(ctx, CLINK_X, CLINK_Y, 150, clamp(dt / 0.5));
+          PR.sparkle(ctx, CLINK_X, CLINK_Y, 150, clamp(dt / 0.5 + 1 / 12)); // +lead: visible on the beat frame
           const life = 1.0;
           if (dt < life) {
             const fade = 1 - dt / life;
@@ -222,7 +222,7 @@
       // =========================================================================
       if (t >= T_CLINK) {
         PR.caption(ctx, 'Prost!', 960, 260, 160, {
-          align: 'center', style: 'gold', pop: clamp((t - T_CLINK) / (4 * FRAME)),
+          align: 'center', style: 'gold', pop: clamp((t - T_CLINK) / (4 * FRAME) + 1 / 4), // +lead: visible on the beat frame
         });
       }
     },
