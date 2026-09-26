@@ -206,12 +206,16 @@ Sources: the client's three reference images (the OktoberFESB logo on a dark and
 - Salsa: the basic step is forward-back on counts 1-2-3 and 5-6-7, holding on 4 and 8, with hip sway opposite the stepping foot, elbows bent at 90 degrees, and a right-hand spin that takes one beat. Poses change on every 8th.
 - Character: cheerful, active, fun-loving, the life of the party. He never stands still: bouncing on his toes, shoulders moving to the music, big open gestures, eyebrows up, eyes crinkled with laughter. Portray him with affection: a charismatic, joyful host, never a clown.
 
-### 10.2 The waitress
+### 10.2 The waitresses
 
-- A cheerful, strong, full-figured waitress in the classic dirndl: white short puffed-sleeve blouse (shirtWhite), laced dark-green bodice (dirndlBodice), burgundy skirt to mid-calf (dirndlSkirt), light-blue apron (dirndlApron) with the bow tied on her left (the viewer's right).
-- Blonde hair (hairBlonde) in a braided crown; rosy cheeks; a big smile.
-- She carries ten Maß mugs, five in each hand, handles gathered in the fist and mugs fanned outward; her arms are nearly straight and she leans back slightly to balance.
-- Draw her friendly and respectable, as on an Oktoberfest postcard. The neckline stays modest; no emphasis on her figure beyond a full silhouette.
+- Three waitresses, all cheerful, strong women in the classic dirndl, drawn in the film's polished style (art bible 4), each with her own look so they never read as copies:
+  - **Liesl** (the hero waitress, shot 06 foreground): blonde (hairBlonde) braided crown, full figure, dark-green bodice (dirndlBodice), burgundy skirt (dirndlSkirt), light-blue apron (dirndlApron).
+  - **Resi**: dark brown hair (hairBrown) in a low bun with a flower, curvy, burgundy bodice, dark-green skirt, cream apron.
+  - **Vroni**: auburn (hairRed) twin braids, slimmer, navy-blue bodice, dirndlApron-blue checked skirt, white apron, a high-necked blouse.
+- The blouse is the short puffed-sleeve dirndl blouse; Liesl and Resi wear the traditional low, rounded dirndl neckline with a visible décolleté, as on a real dirndl and on Oktoberfest postcards; Vroni wears a high-necked blouse. Draw the neckline naturally and in proportion: no exaggeration, no close-ups on it, no camera or motion that dwells on it.
+- The apron bow is tied on their left (the viewer's right).
+- They carry Maß mugs by the handles, up to five per hand, fanned outward, arms nearly straight, leaning back slightly; or a plate of food on a raised palm.
+- Friendly, confident, busy; never posed as eye candy.
 
 ### 10.3 The team
 
@@ -290,5 +294,5 @@ On a unit square (0..1, origin top-left):
 - The FESB logo with four rounded corners or an E instead of an F: two opposite rounded corners and a white F.
 - The chef with hair, a grey beard or a big bushy beard: he is bald with a neat, short, trimmed black beard (a touch of grey) and a red bandana.
 - Showing the chef's face in 01 to 08: he is a silhouette hand and beard edge in 02 and appears only in 09.
-- The waitress carrying a tray: she carries the mugs by their handles, five per hand.
+- A waitress carrying a tray of mugs: waitresses carry Maß mugs by their handles, up to five per hand.
 - Text below y 970 or beyond x 1760: captions stay in the safe area.
